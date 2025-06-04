@@ -16,7 +16,7 @@ dataFile = "data/Yoko_s3_1.hdf5"
 # What data are we interested in
 chToPlot = [1, 2, 3, 4 ,5]
 
-# Librarys needed
+# Libraries needed
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
@@ -200,13 +200,11 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 # Load the data 
 dummyData, dataCapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
 
-# 2-22.21-APDM-data.xlsx has 27 enterys, so this is probably the data
-# Is this even in the right order???
+#trialList = [0, 1, 2, 7]
 trialList = [0]
+for trial in range(20): # Cycle through the trials
+#for i, trial in enumerate(trialList): # Cycle through the trials
 
-#for trial in range(20): # Cycle through the trials
-#for trial in range(dataBlock_numpy.shape[0]): # Cycle through the trials
-for i, trial in enumerate(trialList): # Cycle through the trials
     print(f"Running Trial: {trial}")
     dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dataFile, trial=trial)
     # Get the parts of the data we are interested in:
