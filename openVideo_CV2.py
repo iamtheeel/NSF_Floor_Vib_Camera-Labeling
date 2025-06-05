@@ -19,4 +19,6 @@ if not videoOpbject.isOpened():
     exit()
 
 fps = videoOpbject.get(cv2.CAP_PROP_FPS)
+fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
 print(f"Loded: {fileName}, FramesPerS: {fps}hz")
+print(f"N Frames: {fCount}, type: {type(fCount)}")
