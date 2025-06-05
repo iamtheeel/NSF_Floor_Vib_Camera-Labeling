@@ -6,14 +6,20 @@
 # Opens a video file in OpenCV
 ####
 
+#Built ins
+import time
+
+#Third party
 import cv2 # pip install opencv-python
+
+#in house
 
 # The File
 dir = 'StudentData/25_06_03/Subject_1'
 file = '25_06_03_s1_1.asf'
 fileName = f"{dir}/{file}"
 
-
+# Make a video object
 videoOpbject = cv2.VideoCapture(fileName)
 
 if not videoOpbject.isOpened():
@@ -28,23 +34,34 @@ print(f"Loded: {fileName}, FramesPerS: {fps}hz")
 print(f"N Frames: {fCount}, type: {type(fCount)}")
 print(f"N Width: {w}, height: {h}")
 
+frameDelay_ms = 1000/fps
 # Display
 dispFact = 2
 displayRez = (int(w/dispFact), int(h/dispFact))
 #exit()
 
 for i in range(int(fCount)):
+    # start clock
+    tStart_s = time.time()
     #print(f"Load frame {i}")
     sucess, frame = videoOpbject.read() #.read() returns a boolean value and the frame itself. 
                                     # sucess (t/f): Did this frame read sucessfully?
                                     # frame:  The video image
+    # Check to see if we actualy loaded a frame 
     if not sucess:
         print(f"Frame read failure")
         exit()
 
+    #Change the resulution to fit
     lwResFrame = cv2.resize(frame, displayRez)
     cv2.imshow("Frame", lwResFrame)
+    tEnd_s = time.time()
+    pTime_ms = 1000*(tEnd_s - tStart_s)
+    delayTime_ms = frameDelay_ms - pTime_ms
+    if delayTime_ms <= 0: delayTime_ms = 1
+    #print(f"fDelay: {frameDelay_ms}, proc Time: {pTime_ms}, delay: {delayTime_ms} ms")
     #key = cv2.waitKey(0)
-    key = cv2.waitKey(int(1000/fps))
-    print(key)
+    # stop the clock
+    key = cv2.waitKey(int(delayTime_ms))
+    #key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
