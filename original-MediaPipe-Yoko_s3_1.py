@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import mediapipe as mp
 
 # === SETTINGS ===
-dataFile = "/Volumes/MY PASSPORT/Stars_day1Data/Yoko_s3_3.hdf5"
+dataFile = "/Volumes/MY PASSPORT/Stars_day1Data/Yoko_s3_1.hdf5"
 trial = 0
 chToPlot = [1, 2, 3, 4, 5]
 dataTimeRange_s = [0, 0]  # [0, 0] = use full range
