@@ -10,8 +10,10 @@
 ### Settings
 dataTimeRange_s = [0, 0] # [0 0] for full dataset
 
+dir = 'StudentData/25_06_03/Subject_1'
 #dataFile = "data/Yoko_s3_3.hdf5"
-dataFile = "data/Yoko_s3_1.hdf5"
+dataFile = "Kera_2.hdf5"
+dirFile = f"{dir}/{dataFile}"
 
 # What data are we interested in
 chToPlot = [1, 2, 3, 4 ,5]
@@ -198,7 +200,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
 #### Do the stuff
 # Load the data 
-dummyData, dataCapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
+#dummyData, dataCapRate_hz = loadData(dataFile=dirFile, trial=0 ) # Just get the peramiters
 
 #trialList = [0, 1, 2, 7]
 trialList = [0]
@@ -206,7 +208,7 @@ for trial in range(20): # Cycle through the trials
 #for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dataFile, trial=trial)
+    dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dirFile, trial=trial)
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
     dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
