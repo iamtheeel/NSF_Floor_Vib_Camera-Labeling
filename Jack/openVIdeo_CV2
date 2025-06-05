@@ -1,0 +1,29 @@
+####
+#Jack Capito
+#STARS Summer 2025
+#Dr J Lab
+###
+#opens a video file in CV2
+####
+
+import cv2 # pip install opencv-python
+
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
+file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+filename = f"{dir}/{file}" # Path to the video file
+print(filename)
+
+videoObject = cv2.VideoCapture(filename) # Open the video file
+if not videoObject.isOpened():
+    print("Error: Could not open video file.")
+    exit()
+print(f"Loaded: {filename}")
+
+fps = videoObject.get(cv2.CAP_PROP_FPS) # Get the frames per second of the video
+vidHeight = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT) # Get the height of the video
+vidWidth = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH) # Get the width of the video
+frameCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT) # Get the total number of frames in the video
+
+
+print(f"Loaded: {filename}, FramesPerS: {fps}hz, Height: {vidHeight}px, Width: {vidWidth}px, FramesTot: {frameCount}frames")
+
