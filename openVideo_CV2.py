@@ -11,7 +11,7 @@ import time
 
 #Third party
 import cv2 # pip install opencv-python
-import pytesseract
+import pytesseract #pip install pytesseract
 
 #in house
 
@@ -63,22 +63,28 @@ for i in range(int(fCount)): # Go through each frame
 
     #Change the resulution to fit
 
-    outFrame = cv2.resize(frame, displayRez)
 
-    # canny edge detection?
 
-    #  normalize
-    #outFrame = cv2.normalize(outFrame, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=-1, mask=None)
-    #outFrame = cv2.Laplacian(outFrame, ddepth=cv2.CV_64F)
-    dateTime_img = outFrame[0:23, 0:192]
-    dateTime_img = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)
-    dateTime_img = cv2.bitwise_not(dateTime_img)
-    _, dateTime_img = cv2.threshold(dateTime_img, 150, 255, cv2.THRESH_BINARY)
+    #  Get the time
+    dateTime_img = frame[0:46, 0:384, :] # Get just the time
+    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY) # Convert to grey scale
+    dateTime_img_bw = 255 - dateTime_img_bw #Invert the image
+    #print(f"dateTime_img type: {type(dateTime_img)}, shape: {dateTime_img.shape}")
+    #print(dateTime_img[0:30, 25:40])
+    dateTime_outPut = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
+    print(f"outFame: type: {type(dateTime_outPut)}")
+    object = 5
+    pt1 = [dateTime_outPut['left'][object], dateTime_outPut['top'][object]]
+    pt2 = [dateTime_outPut['width'][object] + dateTime_outPut['left'][object], 
+           dateTime_outPut['top'][object]+ dateTime_outPut['height'][object]]
+    cv2.rectangle(dateTime_img, pt1, pt2, color=(255, 0, 0), thickness=1)
+    dateTime_img = cv2.cvtColor(dateTime_img, cv2.COLOR_RGB2BGR) # Convert to grey scale
+    print(f": {dateTime_outPut['text'][object]}: {dateTime_outPut['conf'][object]}") 
 
-    dateTime_str = pytesseract.image_to_string(dateTime_img)
-    print(f"{dateTime_str}")
 
-    cv2.imshow("Frame", dateTime_img)
+    #outFrame = cv2.resize(frame, displayRez)
+    cv2.imshow("Overlay", dateTime_img)
+    cv2.imshow("Recoc", dateTime_img_bw)
     tEnd_s = time.time()
     pTime_ms = 1000*(tEnd_s - tStart_s)
     delayTime_ms = frameDelay_ms - pTime_ms
