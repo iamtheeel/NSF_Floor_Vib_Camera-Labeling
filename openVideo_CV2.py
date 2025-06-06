@@ -40,7 +40,7 @@ dispFact = 2
 displayRez = (int(w/dispFact), int(h/dispFact))
 #exit()
 
-for i in range(int(fCount)):
+for i in range(int(fCount)): # Go through each frame
     # We need the processing time to make the correct delay for real time playback
     # start clock
     tStart_s = time.time()
