@@ -1,27 +1,68 @@
-import cv2 #import OpenCV lib
-import mediapipe as mp #import model
-from mediapipe.tasks import python #imports submodules from mediapipe
-from mediapipe.tasks.python import vision #imports submodules from mediapipe
+####
+#   Kara's OpenCV Video Player
+#   STARS Summer 2025
+#   Dr J Lab
+###
+# Opens a video file in OpenCV
+####
 
+#Built ins
+import time
 
-Run1 = cv2.VideoCapture("E:\\STARS\\day1_data\\Kara_2_NS_3.40pm.mp4") #Saves vid 1 as object
-if Run1.isOpened(): #Checks if the file is opened
-    print("Video 1 file opened successfully") #Prints success message if file is opened
-else:
-    print("Error opening video 1 file") #Prints error if file is not opened
+#Third party
+import cv2 # pip install opencv-python
+import tesseract # pip install pytesseract
 
-i = 0
+#in house
 
-while True: #While loop to read the video
-    more_frames, frame = Run1.read() #.read() returns a boolean value and the frame itself. more_frames is true if there are more frames to read
-    if not more_frames: #if no more frames. more_frames is false and the loop breaks
-        break
-  
+# The File
+dir = 'E:\STARS\day1_data'
+file = '25_06_03_s1_1.asf'
+fileName = f"{dir}/{file}"
 
+# Make a video object
+videoOpbject = cv2.VideoCapture(fileName)
 
+if not videoOpbject.isOpened():
+    print("Error: Could not open video.")
+    exit()
 
-Run2 = cv2.VideoCapture("E:\\STARS\\day1_data\\Kara_3_SN_3.42pm.mp4") #Saves vid 2 as object
-if Run2.isOpened(): #Checks if the file is opened
-    print("Video 2 file opened successfully") #Prints success message if file is opened
-else:
-    print("Error opening video 2 file") #Prints error if file is not opened
+fps = videoOpbject.get(cv2.CAP_PROP_FPS)
+fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
+w = videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)
+h = videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)
+print(f"Loded: {fileName}, FramesPerS: {fps}hz")
+print(f"N Frames: {fCount}, type: {type(fCount)}")
+print(f"N Width: {w}, height: {h}")
+
+frameDelay_ms = 1000/fps
+# Display
+dispFact = 2
+displayRez = (int(w/dispFact), int(h/dispFact))
+#exit()
+
+for i in range(int(fCount)): # Go through each frame
+    # We need the processing time to make the correct delay for real time playback
+    # start clock
+    tStart_s = time.time()
+    #print(f"Load frame {i}")
+    sucess, frame = videoOpbject.read() #.read() returns a boolean value and the frame itself. 
+                                    # sucess (t/f): Did this frame read sucessfully?
+                                    # frame:  The video image
+    # Check to see if we actualy loaded a frame 
+    if not sucess:
+        print(f"Frame read failure")
+        exit()
+
+    #Change the resulution to fit
+    lwResFrame = cv2.resize(frame, displayRez)
+    cv2.imshow("Frame", lwResFrame)
+    tEnd_s = time.time()
+    pTime_ms = 1000*(tEnd_s - tStart_s)
+    delayTime_ms = frameDelay_ms - pTime_ms
+    if delayTime_ms <= 0: delayTime_ms = 1 # make sure we don't have a negitive delay
+
+    #print(f"fDelay: {frameDelay_ms}, proc Time: {pTime_ms}, delay: {delayTime_ms} ms")
+    key = cv2.waitKey(int(delayTime_ms))
+    #key = cv2.waitKey(int(1))
+    if key == ord('q') & 0xFF: exit()
