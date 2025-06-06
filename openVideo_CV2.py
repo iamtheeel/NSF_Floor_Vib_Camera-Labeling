@@ -40,7 +40,8 @@ dispFact = 2
 displayRez = (int(w/dispFact), int(h/dispFact))
 #exit()
 
-for i in range(int(fCount)):
+for i in range(int(fCount)): # Go through each frame
+    # We need the processing time to make the correct delay for real time playback
     # start clock
     tStart_s = time.time()
     #print(f"Load frame {i}")
@@ -58,10 +59,9 @@ for i in range(int(fCount)):
     tEnd_s = time.time()
     pTime_ms = 1000*(tEnd_s - tStart_s)
     delayTime_ms = frameDelay_ms - pTime_ms
-    if delayTime_ms <= 0: delayTime_ms = 1
+    if delayTime_ms <= 0: delayTime_ms = 1 # make sure we don't have a negitive delay
+
     #print(f"fDelay: {frameDelay_ms}, proc Time: {pTime_ms}, delay: {delayTime_ms} ms")
-    #key = cv2.waitKey(0)
-    # stop the clock
     key = cv2.waitKey(int(delayTime_ms))
     #key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
