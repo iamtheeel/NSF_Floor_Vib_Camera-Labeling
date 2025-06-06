@@ -11,6 +11,7 @@ import time
 
 #Third party
 import cv2 # pip install opencv-python
+import pytesseract
 
 #in house
 
@@ -19,6 +20,11 @@ dir = 'StudentData/25_06_03/Subject_1'
 file = '25_06_03_s1_1.asf'
 fileName = f"{dir}/{file}"
 
+## Add our new function here declare
+def foo(bar):
+    print("bar")
+#Do not call your new function here
+
 # Make a video object
 videoOpbject = cv2.VideoCapture(fileName)
 
@@ -26,6 +32,8 @@ if not videoOpbject.isOpened():
     print("Error: Could not open video.")
     exit()
 
+#Call new function here
+foo("Object")
 fps = videoOpbject.get(cv2.CAP_PROP_FPS)
 fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
 w = videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -54,8 +62,23 @@ for i in range(int(fCount)): # Go through each frame
         exit()
 
     #Change the resulution to fit
-    lwResFrame = cv2.resize(frame, displayRez)
-    cv2.imshow("Frame", lwResFrame)
+
+    outFrame = cv2.resize(frame, displayRez)
+
+    # canny edge detection?
+
+    #  normalize
+    #outFrame = cv2.normalize(outFrame, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=-1, mask=None)
+    #outFrame = cv2.Laplacian(outFrame, ddepth=cv2.CV_64F)
+    dateTime_img = outFrame[0:23, 0:192]
+    dateTime_img = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)
+    dateTime_img = cv2.bitwise_not(dateTime_img)
+    _, dateTime_img = cv2.threshold(dateTime_img, 150, 255, cv2.THRESH_BINARY)
+
+    dateTime_str = pytesseract.image_to_string(dateTime_img)
+    print(f"{dateTime_str}")
+
+    cv2.imshow("Frame", dateTime_img)
     tEnd_s = time.time()
     pTime_ms = 1000*(tEnd_s - tStart_s)
     delayTime_ms = frameDelay_ms - pTime_ms
