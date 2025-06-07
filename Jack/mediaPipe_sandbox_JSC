@@ -1,0 +1,25 @@
+####
+#   Jack Capito
+#   STARS Summer 2025
+#   Dr J Lab
+###
+# mediapipe trials
+# open our video file
+####
+
+import time
+
+import cv2
+
+import mediapipe as mp  # pip install mediapipe
+from mediapipe.tasks import python  # pip install mediapipe-tasks
+from mediapipe.tasks.python import vision  # pip install mediapipe-tasks
+
+model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_lite.task" #5.5 MB
+#model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_full.task" #9.0 MB
+# model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
+
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
+file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+filename = f"{dir}/{file}"  # Path to the video file
+

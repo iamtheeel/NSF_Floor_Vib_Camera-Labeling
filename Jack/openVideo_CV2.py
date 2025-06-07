@@ -8,6 +8,7 @@
 
 import cv2 # pip install opencv-python
 import time
+import pytesseract # pip install pytesseract
 
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
 file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
@@ -20,14 +21,18 @@ if not videoObject.isOpened():
     exit()
 print(f"Loaded: {filename}")
 
-fps = videoObject.get(cv2.CAP_PROP_FPS) # Get the frames per second of the video
-vidHeight = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT) # Get the height of the video
-vidWidth = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH) # Get the width of the video
-frameCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT) # Get the total number of frames in the video
+def nothingburger(text, videoPeram):
+    output = videoObject.get(videoPeram)
+    print(f"Loaded: {output}{text}")
+    return output
 
-
-print(f"Loaded: {filename}, FramesPerS: {fps}hz, Height: {vidHeight}px, Width: {vidWidth}px, FramesTot: {frameCount}frames")
-
+fps = nothingburger("fps", cv2.CAP_PROP_FPS)
+vidHeight = nothingburger("px height", cv2.CAP_PROP_FRAME_HEIGHT)
+vidWidth = nothingburger("px width", cv2.CAP_PROP_FRAME_WIDTH)
+frameCount = nothingburger(" frames in frameCount", cv2.CAP_PROP_FRAME_COUNT)
+zoom = nothingburger(" zoom", cv2.CAP_PROP_ZOOM)
+pan = nothingburger(" pan", cv2.CAP_PROP_PAN)
+tilt = nothingburger(" tilt", cv2.CAP_PROP_TILT)
 dispFact=2
 displayRez = (int(vidWidth/dispFact), int(vidHeight/dispFact)) # Calculate the display resolution by dividing the width and height by a factor
 
@@ -44,8 +49,24 @@ for i in range(int(frameCount)):
         print(f"frame read failure")
         exit()
 
-    lwresframe = cv2.resize(frame, displayRez) # Resize the frame to the display resolution
-    cv2.imshow("Video Frame", lwresframe) # Display the frame in a window named "Video Frame"
+    
+    lwresframe = cv2.resize(frame, displayRez)
+    #blurred = cv2.GaussianBlur(frame, (31, 31), 0)
+    blackWhite = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    white2Black = cv2.bitwise_not(blackWhite)
+
+    dateTime_img = white2Black[0:45, 0:384]
+    #print(f"frame: type: {type(dateTime_img)}, len {dateTime_img.shape}")
+    dateTimeOutput = pytesseract.image_to_data(dateTime_img, output_type=pytesseract.Output.DICT)
+    dateTime_str = dateTimeOutput['text']
+    dateTime_conf = dateTimeOutput['conf']
+    print(f"Date: {dateTime_str[4]}, Conf:{dateTime_conf[4]}",
+          f"Time: {dateTime_str[5]}, Conf:{dateTime_conf[5]}") y
+    
+
+    cv2.imshow("Video Frame", dateTime_img) # Display the frame in a window named "Video Frame"
+
+
 
     processing_time = (time.time() - start_time) * 1000  # in milliseconds
     delay = max(int(1000/fps) - int(processing_time), 1)  # Ensure at least 1 ms delay
