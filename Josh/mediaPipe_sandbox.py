@@ -89,6 +89,8 @@ for i in range(int(fCount)): # Go through each frame
 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+    #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
+    print(pose_landmarker_result)
     
 
     key = cv2.waitKey(int(1))
