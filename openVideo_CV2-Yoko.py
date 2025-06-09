@@ -14,9 +14,15 @@ import cv2  # pip install opencv-python
 import pytesseract  # pip install pytesseract
 
 # === SETTINGS ===
-dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-filename = f"{dir}{file}"  # Full path to the video file
+video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
+video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+fileName = f"{video_dir}/{video_file}"
+
+landmarker = PoseLandmarker.create_from_options(options)
+#with PoseLandmarker.create_from_options(options) as landmarker:
+  # The landmarker is initialized. Use it here.
+  # ...
+#exit()
 
 # === Add our new funtion here === "
 #Add variable and does not return, no parameters#
