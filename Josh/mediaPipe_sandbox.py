@@ -45,10 +45,10 @@ fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
 w = videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)
 h = videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-frameTime_ms = 1000/fps
-# Display
+frameTime_ms = 1000/fps #How long of a time does each frame cover
+# Fit to the display
 dispFact = 2
-displayRez = (256, 256)
+displayRez = (int(w/dispFact), int(h/dispFact))
 
 
 
@@ -67,10 +67,8 @@ options = PoseLandmarkerOptions(
                                )
 
 landmarker = PoseLandmarker.create_from_options(options)
-#with PoseLandmarker.create_from_options(options) as landmarker:
-  # The landmarker is initialized. Use it here.
-  # ...
 #exit()
+
 frame_timestamp_ms = 0
 for i in range(int(fCount)): # Go through each frame
     frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
@@ -82,16 +80,17 @@ for i in range(int(fCount)): # Go through each frame
         print(f"Frame read failure")
         exit()
 
-    #frame = cv2.resize(frame, displayRez)
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) # Convert to grey scale
-    cv2.imshow("Input", frame)
-    print(f"Frame: {i}, timeStamp: {frame_timestamp_ms}")
-
+    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
     #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
     print(pose_landmarker_result)
-    
+
+    #Show the frame 
+    frame = cv2.resize(frame, displayRez)
+    cv2.imshow("Input", frame)
+    print(f"Frame: {i}, timeStamp: {frame_timestamp_ms}")
+
 
     key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
