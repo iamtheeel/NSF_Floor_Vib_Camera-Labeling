@@ -13,9 +13,10 @@
 import time
 
 #Third party
-import cv2 # pip install opencv-python
-import pytesseract # pip install pytesseract
+import cv2 # opencv-python
+import pytesseract # pytesseract
 import matplotlib as plt # matplotlib
+import numpy as np # numpy
 
 # Media Pipe
 import mediapipe as mp
@@ -31,55 +32,79 @@ model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
 
+
 #Video File
 dir = r"E:\STARS\day1_data"
 file = r"25_06_03_s1_1.asf"
 fileName = f"{dir}/{file}"
 
-## Open our video File
-# Make a video object
-videoOpbject = cv2.VideoCapture(fileName)
 
-def getDateTime(frame):
-    dateTime_img = frame[0:46,0:384] # Get the date time image from the top left corner
-    dateTime_img_bw = cvtColor = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY) # Convert to grayscale
-    dateTime_img_bw = 255 - dateTime_img_bw # Invert the image
-    dateTime_outPut =pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
-    timeStr_num = 5
-    dateTime_img = frame[0:46,0:400]# Use pytesseract to read the date time
-    print(f"Time: {dateTime_outPut['text'][timeStr_num]} | conf: {dateTime_outPut['conf'][timeStr_num]}")
-
-def drawLandmark_feet(frame, landmark):
-    radius = 15
-    thickness = 5
-    color = [255, 0, 0] # Green for right foot
-    center = int(landmark.x*w), int(landmark.y*h)
-    print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")
-    cv2.circle(frame, center, radius, color, thickness) # Draw a circle at the landmark position
-
-def drawLandmark_line(frame, feet, hips):
-    color = [255, 0, 0] # Red for left foot
-    pt1_ft = (int(feet.x*w),int(feet.y*h)) 
-    pt2_hips = (int(hips.x*w), int(hips.y*h))
-    thickness = 5
-    cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a circle at the landmark position
-
+#Global variables
+videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video object
 if not videoOpbject.isOpened():
     print("Error: Could not open video.")
     exit()
-fps = videoOpbject.get(cv2.CAP_PROP_FPS)
-print(f"FPS: {fps}")
-fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
-w = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH))
-h = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+# Get video properties    
+fps = videoOpbject.get(cv2.CAP_PROP_FPS) # Frames per second
+#print(f"FPS: {fps}")
+fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
+height, width, _ = videoOpbject.read()[1].shape # Get the width and height of the video frame
 
 frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
-displayRez = (int(w/dispFact), int(h/dispFact))
+displayRez = (int(width/dispFact), int(height/dispFact))
 
 
+#functions
+def getDateTime(frame):
+    dateTime_img = frame[0:46,0:384] # Get the date time image from the top left corner
+    dateTime_img_bw = cvtColor = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY) # Convert to grayscale
+    dateTime_img_bw = 255 - dateTime_img_bw # Invert the image
+    dateTime_outPut =pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT) # Use pytesseract to read the date time
+    timeStr_num = 5 # The number of the time string in the output dictionary
+    dateTime_img = frame[0:46,0:400]# Crop the date time image from the frame
+    print(f"Time: {dateTime_outPut['text'][timeStr_num]} | conf: {dateTime_outPut['conf'][timeStr_num]}") #output date time and confidence 
 
+def drawLandmark_feet(frame, landmark):
+    radius = 15
+    thickness = 5
+    color = [255, 0, 0] #Circle will be red
+    center = int(landmark.x*width), int(landmark.y*height) #place center of the circle at the landmark position
+    #print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")
+    cv2.circle(frame, center, radius, color, thickness) # Draw a circle at the landmark position
+
+def drawLandmark_line(frame, feet, hips):
+    color = [255, 0, 0] # Line will be red
+    pt1_ft = (int(feet.x*width),int(feet.y*height)) #First point is on the feet
+    pt2_hips = (int(hips.x*width), int(hips.y*height)) #second point is on the hips
+    thickness = 5
+    cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a line from the feet to the hips
+
+def crop_with_padding(frame, lfthip, rthip, crop_width=250):
+    # Calculate center between left and right hips
+    center_x = (lfthip + rthip) // 2 # Calculate the center x position between the left and right hips
+    # Set crop bounds equidistant from the center
+    x1 = center_x - crop_width // 2
+    x2 = center_x + crop_width // 2
+    # Calculate how much we are out of bounds
+    pad_left   = max(0, -x1) #x1 is negative if it extends beyond the left edge of the frame
+    pad_right  = max(0, x2 - width) #x1 is negative if it extends beyond the right edge of the frame
+        #Take max of numbers to get padding amount
+    # Apply padding if needed
+    frame_padded = cv2.copyMakeBorder(frame,0,0,pad_left,pad_right,borderType=cv2.BORDER_CONSTANT,value=(0, 0, 0))  # Black padding
+     # Update crop coordinates for the padded image
+    x1_padded = x1 + pad_left
+    x2_padded = x2 + pad_left
+    #y1_padded = y1 + pad_top
+    #y2_padded = y2 + pad_top
+    # Crop the padded frame
+    cropped = frame_padded[0:height, x1_padded:x2_padded]
+    return cropped   #Return the cropped frame with padding
+
+
+#mediaPipe settings
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -97,16 +122,29 @@ options = PoseLandmarkerOptions(
 landmarker = PoseLandmarker.create_from_options(options)
 #exit()
 
-frame_timestamp_ms = 0.0
-clipStartTime_s = 50.0
-clipEndTime_s = 80.0
-clipStartFrame = int(clipStartTime_s*fps)
-clipEndFrame = int(clipEndTime_s*fps)
+#frame_timestamp_ms = 0.0
+#clipStartTime_s = 50.0
+#clipEndTime_s = 80.0
+#clipStartFrame = int(clipStartTime_s*fps)
+#clipEndFrame = int(clipEndTime_s*fps)
 
-#videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, int(clipStartFrame)) # Initial start point
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, int(clipStartFrame))
-for num in range(clipStartFrame, clipEndFrame): # Go through each frame
-    frame_timestamp_ms += int(num * frameTime_ms)  # frame number to milliseconds
+clipRunTime_s = 0
+clipStartTime_s = 30
+clipEndTime_s = clipStartTime_s + clipRunTime_s
+clipStartFrame = clipStartTime_s*fps
+if clipRunTime_s == 0:
+    clipRunFrames = int(fCount - clipStartFrame)
+else:
+    clipRunFrames = int((clipEndTime_s- clipStartTime_s)*fps)
+
+#videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, int(clipStartFrame)) # Initial start point, goes to 1st key frame
+videoOpbject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s*1000) # Initial start point
+
+frame_timestamp_ms = 0
+
+for num in range(clipRunFrames): # Go through each frame
+    #frame_timestamp_ms += int(num * frameTime_ms)   increment through the frames
+    frame_timestamp_ms = int(num * frameTime_ms) #increments frame timestamp by the time of each frame
     sucess, frame = videoOpbject.read() #.read() returns a boolean value and the frame itself. 
                                     # sucess (t/f): Did this frame read sucessfully?
                                     # frame:  The video image
@@ -116,9 +154,9 @@ for num in range(clipStartFrame, clipEndFrame): # Go through each frame
         exit()
     #getDateTime(frame) # Get the date time from the frame
 
-    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) 
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_bgr)
-    pose_landmarker_result = landmarker.detect_for_video(mp_image, int(frame_timestamp_ms))
+    #frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) 
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame) #Create a MediaPipe image from the frame
+    pose_landmarker_result = landmarker.detect_for_video(mp_image, int(frame_timestamp_ms)) # Detect the pose landmarks in each frame
     #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
     if len(pose_landmarker_result.pose_world_landmarks) > 0:
         landmarks = pose_landmarker_result.pose_landmarks[0]
@@ -132,13 +170,17 @@ for num in range(clipStartFrame, clipEndFrame): # Go through each frame
     #print(pose_landmarker_result)
     #Show the frame 
 
-    rthp_x = int(landmarks[24].x * w)
-    lfthp_x = int(landmarks[23].x * w)
-    rtft_y = int(landmarks[32].y * h)
+    #Get the feet and hips landmarks 
+    rthip_x = int(landmarks[24].x * width)
+    lfthip_x = int(landmarks[23].x * width)
+
+    rtft_y = int(landmarks[32].y * height)
     #print(f"Right foot x: {rtft_x}, y: {rtft_y}")
 
-    new_frame = frame[0:rtft_y + 50, lfthp_x - 100 :rthp_x + 100]
-    print(f"The width is: {lfthp_x -rthp_x}")
+    # Calculate center between left and right hips center_x = int((lfthip_x + rthip_x) / 2)
+
+    new_frame = crop_with_padding(frame, lfthip_x, rthip_x) # Crop the frame with padding
+    #print(f"The width is: {rthp_x +100 - (lfthp_x - 100)}")
 
     if new_frame.size > 0:
         cv2.imshow("Input", new_frame)
