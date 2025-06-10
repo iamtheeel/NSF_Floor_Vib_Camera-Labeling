@@ -132,9 +132,7 @@ for i in range(clipRunFrames): # Go through each frame this many times
         strideLen = math.sqrt(math.pow(dX,2) + math.pow(dY, 2) + math.pow(dZ, 2))
         print(f"stride length: {strideLen:.3f}m, {strideLen*3.28084:.3f} ft")
     if pose_landmarker_result.segmentation_masks is not None:
-        #mask = np.array(pose_landmarker_result.segmentation_masks[0])
         mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
-        #mask = (mask * 255).astype(np.uint8) # was 0.0 - 1.0 --> 0 - 255
         cv2.imshow("Seg mask", mask)
 
     #Show the frame 
