@@ -10,9 +10,11 @@
 ## Imports
 #Built ins
 import time
+import math
 
 #Third party
 import cv2 # pip install opencv-python
+import numpy as np
 
 # Media Pipe
 import mediapipe as mp  #pip install mediapipe
@@ -23,9 +25,9 @@ from mediapipe.tasks.python import vision   # installs with mediapipe
 # Media pipe model: 
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
-model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_lite.task' # 5.5 MiB
+#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_lite.task' # 5.5 MiB
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
-#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
+model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
 
 #Video File
 dir = 'StudentData/25_06_03/Subject_2'
@@ -67,6 +69,7 @@ options = PoseLandmarkerOptions(
                                                          delegate=BaseOptions.Delegate.CPU # Default is GPU, and I anin't got none
                                                          ),
                                 running_mode=VisionRunningMode.VIDEO,
+                                output_segmentation_masks=True
                                )
 landmarker = PoseLandmarker.create_from_options(options)
 
@@ -84,16 +87,19 @@ def getDateTime(frame):
 def drawLandmark(frame, landmark, color):
     radius = 15
     thickness = 5 # filled in 
-    print(f"x: {landmark.x}, y: {landmark.y}")  
+    #print(f"x: {landmark.x}, y: {landmark.y}")  
     center = [int(landmark.x*w), int(landmark.y*h)]
     cv2.circle(frame, center , radius, color, thickness)
 
 #exit()
-clipRunTime_s = 2000
-clipStartTime_s = 0 #30
+clipRunTime_s = 0
+clipStartTime_s = 30
 clipEndTime_s = clipStartTime_s + clipRunTime_s
 clipStartFrame = clipStartTime_s*fps
-clipRunFrames = int((clipEndTime_s- clipStartTime_s)*fps)
+if clipRunTime_s == 0:
+    clipRunFrames = int(fCount - clipStartFrame)
+else:
+    clipRunFrames = int((clipEndTime_s- clipStartTime_s)*fps)
 
 #videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, clipStartFrame) # Initial start point, goes to first keyframe
 videoOpbject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s*1000) # Initial start point
@@ -111,7 +117,6 @@ for i in range(clipRunFrames): # Go through each frame this many times
         exit()
 
     getDateTime(frame) #Read the date and time from the upper left of the frame
-    '''
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
     if len(pose_landmarker_result.pose_landmarks)  > 0:
@@ -119,8 +124,18 @@ for i in range(clipRunFrames): # Go through each frame this many times
         drawLandmark(frame, landmarks[0], [0, 0, 0]) # Nose
         drawLandmark(frame, landmarks[29], [255, 0, 0]) # Left heel
         drawLandmark(frame, landmarks[30], [0, 255, 0]) # Right heel
-    #if len(pose_landmarker_result.pose_world_landmarks)  > 0:
-    '''
+
+        landmarks_w = pose_landmarker_result.pose_world_landmarks[0] 
+        dX = landmarks_w[29].x - landmarks_w[30].x
+        dY = landmarks_w[29].y - landmarks_w[30].y
+        dZ = landmarks_w[29].z - landmarks_w[30].z
+        strideLen = math.sqrt(math.pow(dX,2) + math.pow(dY, 2) + math.pow(dZ, 2))
+        print(f"stride length: {strideLen:.3f}m, {strideLen*3.28084:.3f} ft")
+    if pose_landmarker_result.segmentation_masks is not None:
+        #mask = np.array(pose_landmarker_result.segmentation_masks[0])
+        mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
+        #mask = (mask * 255).astype(np.uint8) # was 0.0 - 1.0 --> 0 - 255
+        cv2.imshow("Seg mask", mask)
 
     #Show the frame 
     #draw circle, or line, or rectange.
