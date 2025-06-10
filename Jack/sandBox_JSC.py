@@ -1,24 +1,25 @@
-import cv2 # pip install opencv-python
-import time
+import numpy as np
 
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-filename = f"{dir}/{file}" # Path to the video file
-print(filename)
+# Example data
+y_values = np.array([284, 305, 361, 428, 468, 516.5, 569, 630, 702, 891.5, 1016.5, 1175, 1383.5])
+distances = np.array([59.25, 56.25, 50.25, 47.25, 44.25, 42.25, 48.25, 35.25, 32.25, 26.25, 23.25, 20.25, 17.25])
 
-videoObject = cv2.VideoCapture(filename) # Open the video file
-if not videoObject.isOpened():
-    print("Error: Could not open video file.")
-    exit()
-print(f"Loaded: {filename}")
 
-def nothingburger(fpsPeram, heightPeram, widthPeram, frameCountPeram):
-    fps = videoObject.get(fpsPeram)
-    height = videoObject.get(heightPeram)
-    width = videoObject.get(widthPeram)
-    frame_count = videoObject.get(frameCountPeram)
-    return fps, height, width, frame_count
+def exponential_fit(x_vals, y_vals):
+    x = np.array(distances)
+    y = np.array(y_values)
 
-fps, height, width, frame_count = nothingburger(cv2.CAP_PROP_FPS, cv2.CAP_PROP_FRAME_HEIGHT, cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_COUNT)
+    # Transform y to ln(y)
+    ln_y = np.log(y)
 
-print(f"FPS: {fps}, Height: {height}, Width: {width}, Frame Count: {frame_count}")
+    # Fit ln_y = b*x + ln(a) using polyfit (degree 1)
+    b, ln_a = np.polyfit(x, ln_y, 1)
+
+    a = np.exp(ln_a)
+
+    # Return the exponential equation as a string
+    equation = f"y = {a:.4f} * e^({b:.4f}x)"
+    return equation
+
+eqn = exponential_fit(distances, y_values)
+print(eqn)

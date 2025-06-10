@@ -16,17 +16,21 @@ file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
 filename = f"{dir}/{file}" # Path to the video file
 print(filename)
 
+
 videoObject = cv2.VideoCapture(filename) # Open the video file
 if not videoObject.isOpened():
     print("Error: Could not open video file.")
     exit()
 print(f"Loaded: {filename}")
 
-def perameters(text, videoPeram):
+
+# Function to get video parameters  
+def perameters(videoPeram, text):
     output = videoObject.get(videoPeram)
     print(f"Loaded: {output}{text}")
     return output
 
+# Function to filter and merge close points
 def merge_close_y(points, threshold=8):
     sorted_points = sorted(points, key=lambda p: p[1])
     
@@ -52,17 +56,65 @@ def merge_close_y(points, threshold=8):
 
     return merged_points
 
+def get_avg_points_from_lines(lines, line_mask):
+    avg_points = []
+    for line in lines:
+        x1l, y1l, x2l, y2l = line[0]
+        if abs(y2l - y1l) < 5:  # horizontal filtering
+            x_avg = (x1l + x2l) // 2
+            y_avg = (y1l + y2l) // 2
+            avg_points.append((x_avg, y_avg))
+            cv2.line(line_mask, (x1l, y1l), (x2l, y2l), (0,255,0), 2)
+            # Optionally: cv2.circle(line_mask, (x_avg, y_avg), 5, (0,0,255), -1)
+    return avg_points
 
-fps = perameters("fps", cv2.CAP_PROP_FPS)
-vidHeight = perameters("px height", cv2.CAP_PROP_FRAME_HEIGHT)
-vidWidth = perameters("px width", cv2.CAP_PROP_FRAME_WIDTH)
-frameCount = perameters(" frames in frameCount", cv2.CAP_PROP_FRAME_COUNT)
-dispFact=2
-displayRez = (int(vidWidth/dispFact), int(vidHeight/dispFact)) # Calculate the display resolution by dividing the width and height by a factor
+def y_to_distance(y):
+    return 2550 * np.exp(-0.0386 * y)
 
-videoObject.set(cv2.CAP_PROP_POS_FRAMES, 2000)
+def y_to_distance_for_points(filtered_points):
+    for point in filtered_points:
+        y = point[1]
+        distance = np.log(y/2550) / -0.0386  # Calculate distance from y
+        print(f"x={point[0]:.2f}, y={y:.2f}, distance={distance:.2f} ft")
+
+def exponential_fit(x_vals, y_vals):
+    x = np.array(distances)
+    y = np.array(y_values)
+
+    # Transform y to ln(y)
+    ln_y = np.log(y)
+
+    # Fit ln_y = b*x + ln(a) using polyfit (degree 1)
+    b, ln_a = np.polyfit(x, ln_y, 1)
+
+    a = np.exp(ln_a)
+
+    # Return the exponential equation as a string
+    equation = f"y = {a:.4f} * e^({b:.4f}x)"
+    return equation
+    
+
+
+#establish video perameters here
+fps = perameters(cv2.CAP_PROP_FPS, "fps")
+vidHeight = perameters(cv2.CAP_PROP_FRAME_HEIGHT, "px height")
+vidWidth = perameters(cv2.CAP_PROP_FRAME_WIDTH, "px width")
+frameCount = perameters(cv2.CAP_PROP_FRAME_COUNT, " frames in frameCount")
+dispFact=2 #how much you're reducing the output resolution by
+
+# Calculate the display resolution by dividing the width and height by the display factor
+displayRez = (int(vidWidth/dispFact), int(vidHeight/dispFact)) 
+
+
+##video player
+#video start point
+vidStartFrame = 2000
+videoObject.set(cv2.CAP_PROP_POS_FRAMES, int(vidStartFrame))
+
+
 for i in range(int(frameCount)): 
-    #print(f"load frame {i}")
+    # how far into the video you are printout
+    print(f"load frame {i+vidStartFrame}")
     start_time = time.time()  # Start timing
 
     success, frame = videoObject.read() # .read() returns a boolean value and the frame itself. 
@@ -74,37 +126,34 @@ for i in range(int(frameCount)):
         exit()
 
 
-
-
+    ## Do the edge tracking
     # Define your crop region (adjust as needed)
-    x1, x2 = 1300, 1650  # horizontal range (columns)
-    y1, y2 = 0, 1512  # vertical range (rows)
+    x1, x2 = 1300, 1650
+    y1, y2 = 0, int(vidHeight)
 
-    cropped_frame = frame[y1:y2, x1:x2]  # Crop the color image
+    # Video processing to find the lines
+    cropped_frame = frame[y1:y2, x1:x2, :]  # Crop the color image
     blackWhite = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(blackWhite, 80, 100)
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=40, maxLineGap=10)
 
-    # 1. Create a blank mask for lines (same size as crop, 3 channels)
+    # Create a blank mask for lines (same size as crop, 3 channels)
     line_mask = np.zeros_like(cropped_frame)
-    avg_points = []
-    for line in lines:
-        x1l, y1l, x2l, y2l = line[0]
-        if abs(y2l - y1l) < 5:  # Nearly horizontal
-            x_avg = (x1l + x2l) // 2
-            y_avg = (y1l + y2l) // 2
-            avg_points.append((x_avg, y_avg))
-            cv2.line(line_mask, (x1l, y1l), (x2l, y2l), (0,255,0), 2)
-            #cv2.circle(line_mask, (x_avg, y_avg), 5, (0,0,255), -1)  # Red dot for midpoint
-                                                                      # of each line pre-merge
 
+    # Calculate center points for each line
+    avg_points = get_avg_points_from_lines(lines, line_mask)
+
+    # Filter and merge close points based on y-coordinates
     filtered_points = merge_close_y(avg_points)
+
 
     # Draw the filtered points (ensure integer coordinates)
     for (x, y) in filtered_points:
         cv2.circle(line_mask, (int(x), int(y)), 5, (0, 0, 255), -1)  # Red dot for merged midpoint
 
-    print(f"Filtered points: {filtered_points}")  # Debugging output
+    #print(f"Filtered points: {filtered_points}")  # Show the filtered points in the terminal
+
+    y_to_distance_for_points(filtered_points) 
 
     # Place the mask back into the original frame size
     overlay_mask = np.zeros_like(frame)
@@ -123,10 +172,13 @@ for i in range(int(frameCount)):
 
     #print(f"Processing time: {processing_time:.2f} ms, Delay: {delay} ms")  # Optional: see timing info
 
-    # stop the clock
-    key = cv2.waitKey(0) # Wait for a key press for a duration based on the video's FPS
+    # make the clock function
+    key = cv2.waitKey(0)
     if key == ord('q') & 0xFF: break # If the 'q' key is pressed, exit the loop
 
+
+#write the last set of filtered points to a CSV file
+##!! IMPORTANT !! add your filtered points to .gitignore
 with open('filtered_points.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['x', 'y'])  # Header
