@@ -15,10 +15,9 @@ import time
 import cv2 # pip install opencv-python
 
 # Media Pipe
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-#export LIBGL_ALWAYS_SOFTWARE=1
+import mediapipe as mp  #pip install mediapipe
+from mediapipe.tasks import python   # installs with mediapipe
+from mediapipe.tasks.python import vision   # installs with mediapipe
 
 ## Configureations:
 # Media pipe model: 
@@ -29,8 +28,12 @@ model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmar
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
 
 #Video File
-dir = 'StudentData/25_06_03/Subject_1'
-file = '25_06_03_s1_1.asf'
+dir = 'StudentData/25_06_03/Subject_2'
+file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+#dir = 'StudentData/25_06_09'  
+#file = 'B8A44FC4B25F_6-9-2025_11-54-27 AM.asf' #H.264, GOP = 150
+#file  ='B8A44FC4B25F_6-9-2025_12-13-11 PM.a' #H.264, GOP = 1
+#file = 'output_allkey.mp4'
 fileName = f"{dir}/{file}"
 
 ## Open our video File
@@ -65,12 +68,39 @@ options = PoseLandmarkerOptions(
                                                          ),
                                 running_mode=VisionRunningMode.VIDEO,
                                )
-
 landmarker = PoseLandmarker.create_from_options(options)
+
+import pytesseract #pip install pytesseract to do OCR/ICR
+def getDateTime(frame):
+    dateTime_img = frame[0:46, 0:384, :] # Get just the time
+    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY) # Convert to grey scale
+    dateTime_img_bw = 255 - dateTime_img_bw #Invert the image
+    #print(f"dateTime_img type: {type(dateTime_img)}, shape: {dateTime_img.shape}")
+    #print(dateTime_img[0:30, 25:40])
+    dateTime_outPut = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
+    timeStr_num = 5
+    print(f"Time: {dateTime_outPut['text'][timeStr_num]} | conf: {dateTime_outPut['conf'][timeStr_num]}%") 
+
+def drawLandmark(frame, landmark, color):
+    radius = 15
+    thickness = 5 # filled in 
+    print(f"x: {landmark.x}, y: {landmark.y}")  
+    center = [int(landmark.x*w), int(landmark.y*h)]
+    cv2.circle(frame, center , radius, color, thickness)
+
 #exit()
+clipRunTime_s = 2000
+clipStartTime_s = 0 #30
+clipEndTime_s = clipStartTime_s + clipRunTime_s
+clipStartFrame = clipStartTime_s*fps
+clipRunFrames = int((clipEndTime_s- clipStartTime_s)*fps)
+
+#videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, clipStartFrame) # Initial start point, goes to first keyframe
+videoOpbject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s*1000) # Initial start point
+#whichFrame = videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)
 
 frame_timestamp_ms = 0
-for i in range(int(fCount)): # Go through each frame
+for i in range(clipRunFrames): # Go through each frame this many times
     frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
     sucess, frame = videoOpbject.read() #.read() returns a boolean value and the frame itself. 
                                     # sucess (t/f): Did this frame read sucessfully?
@@ -80,16 +110,24 @@ for i in range(int(fCount)): # Go through each frame
         print(f"Frame read failure")
         exit()
 
-    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) 
+    getDateTime(frame) #Read the date and time from the upper left of the frame
+    '''
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
-    #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
-    print(pose_landmarker_result)
+    if len(pose_landmarker_result.pose_landmarks)  > 0:
+        landmarks = pose_landmarker_result.pose_landmarks[0] 
+        drawLandmark(frame, landmarks[0], [0, 0, 0]) # Nose
+        drawLandmark(frame, landmarks[29], [255, 0, 0]) # Left heel
+        drawLandmark(frame, landmarks[30], [0, 255, 0]) # Right heel
+    #if len(pose_landmarker_result.pose_world_landmarks)  > 0:
+    '''
 
     #Show the frame 
+    #draw circle, or line, or rectange.
+    #cv2.circle(frame, (200, 100), 20, [0, 0, 100], 1)
     frame = cv2.resize(frame, displayRez)
     cv2.imshow("Input", frame)
-    print(f"Frame: {i}, timeStamp: {frame_timestamp_ms}")
+    #print(f"Frame: {i}, timeStamp: {frame_timestamp_ms} ms")
 
 
     key = cv2.waitKey(int(1))
