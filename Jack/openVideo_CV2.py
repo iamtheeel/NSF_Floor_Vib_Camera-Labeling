@@ -49,7 +49,7 @@ for i in range(int(frameCount)):
         print(f"frame read failure")
         exit()
 
-    
+   
     lwresframe = cv2.resize(frame, displayRez)
     #blurred = cv2.GaussianBlur(frame, (31, 31), 0)
     blackWhite = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

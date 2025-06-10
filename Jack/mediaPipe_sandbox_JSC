@@ -8,27 +8,11 @@
 ####
 
 import time
-
 import cv2
-
 import mediapipe as mp  # pip install mediapipe
 from mediapipe.tasks import python  # pip install mediapipe-tasks
 from mediapipe.tasks.python import vision  # pip install mediapipe-tasks
-
-
-
-import time
-
-#Third party
-import cv2 # pip install opencv-python
-
-# Media Pipe
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-
-import pytesseract # pip install pytesseract
-#export LIBGL_ALWAYS_SOFTWARE=1
+import pytesseract  # pip install pytesseract
 
 ## Configureations:
 # Media pipe model: 
@@ -98,8 +82,8 @@ def draw_landmarks_on_image(image, pose_landmarker_result):
         cv2.circle(image, (x_px, y_px), 4, (0, 255, 0), -1)  # Green dot
     return image
 
-clipStartSecs = 125 #Start at this many seconds into the video
-clipEndSecs = 160 #End this many seconds into the video
+clipStartSecs = 25 #Start at this many seconds into the video
+clipEndSecs = 50 #End this many seconds into the video
 
 clipStartTime_f = fps * clipStartSecs
 clipEndTime_f = ((fps * clipEndSecs) - int(clipStartTime_f))
