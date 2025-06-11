@@ -24,7 +24,7 @@ model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 
 #Video File
 dir = r"E:\STARS\day1_data"
-file = r"25_06_03_s1_1.asf"
+file = r"s3_B8A44FC4B25F_6_3_2025_4_08_45.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
