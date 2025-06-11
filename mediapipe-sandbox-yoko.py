@@ -1,109 +1,111 @@
-####
-#   Jack Capito
-#   STARS Summer 2025
-#   Dr J Lab
-###
-# MediaPipe Pose Tracking with OCR Timestamp (Clean Output)
-####
-
 import time
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import pytesseract
+import math
 
 # === CONFIGURATION ===
-video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
-video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-fileName = f"{video_dir}/{video_file}"
+video_file = "/Volumes/MY PASSPORT/Stars_day1Data/s2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf"
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"  # ⚡ Lite model for speed
 
-# === OPEN VIDEO ===
-videoObject = cv2.VideoCapture(fileName)
-if not videoObject.isOpened():
+# Calibration: adjust based on known object in video
+cm_per_pixel = 1 / 2.7  # ← 1 cm = 2.7 pixels
+
+# === VIDEO SETUP ===
+video = cv2.VideoCapture(video_file)
+if not video.isOpened():
     print("❌ Error: Could not open video.")
     exit()
 
-nFrames = int(videoObject.get(cv2.CAP_PROP_FRAME_COUNT))  #how many frames?
-width  = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
-height = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
-fps = videoObject.get(cv2.CAP_PROP_FPS)  # float `height`
-fCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT)
-w = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH)
-h = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT)
+fps = video.get(cv2.CAP_PROP_FPS)
+frameTime_ms = 1000 / fps
+w = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+h = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-fps = videoObject.get(cv2.CAP_PROP_FPS)
-
-frameTime_ms = 1000 / fps # Convert FPS to milliseconds per frame
-startSecs = 125
-endSecs = 155
-
-dispFact = 2
-displayRez = (int(w/dispFact), int(h/dispFact))
-
-start_frame = int(fps * startSecs)
-end_frame = int(fps * endSecs)
-num_frames = end_frame - start_frame
-
-if num_frames <= 0:
-    print("❌ Invalid clip duration.")
-    exit()
-
-videoObject.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
-# === MediaPipe Setup ===
+# === MEDIAPIPE SETUP ===
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
 PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 options = PoseLandmarkerOptions(
-    base_options=BaseOptions(model_asset_path=model_path, delegate=BaseOptions.Delegate.CPU),
+    base_options=BaseOptions(model_asset_path=model_path),
     running_mode=VisionRunningMode.VIDEO,
 )
-landmarker = PoseLandmarker.create_from_options(options)
 
 # === OCR FUNCTION ===
 def getDateTime(frame):
-    crop = frame[0:45, 0:384]  # Adjust if needed
+    crop = frame[0:45, 0:384]
     gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     inv = cv2.bitwise_not(gray)
-    datetime_output = pytesseract.image_to_data(inv, output_type=pytesseract.Output.DICT)
+    data = pytesseract.image_to_data(inv, output_type=pytesseract.Output.DICT)
     try:
-        date_str = datetime_output['text'][4]
-        time_str = datetime_output['text'][5]
-        conf = datetime_output['conf'][4]  # Use only one confidence value (e.g., for date)
-        return f"{date_str} {time_str}", conf
+        date_str = data['text'][4]
+        time_str = data['text'][5]
+        conf = int(data['conf'][4])
+        return f"{time_str}", conf
     except:
         return "OCR Error", 0
 
 # === MAIN LOOP ===
-for i in range(num_frames):
-    success, frame = videoObject.read()
-    if not success:
-        print("❌ Frame read failure")
-        break
+frame_idx = 0
+last_timestamp = "Unknown"
+last_conf = 0
 
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+log_file = open("heel_stride_log.txt", "w")
 
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
-    frame_timestamp_ms = int((start_frame + i) * frameTime_ms)
+with PoseLandmarker.create_from_options(options) as detector:
+    while True:
+        success, frame = video.read()
+        if not success:
+            break
 
-    result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+        # 🔁 Skip every other frame for speed
+        if frame_idx % 2 != 0:
+            frame_idx += 1
+            continue
 
-    timestamp_text, conf = getDateTime(frame)
-    print(f"Date: {timestamp_text}, conf: {conf}")
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
 
-    # Optional: Display frame
-    cv2.imshow("Video Frame Only", frame)
-    key = cv2.waitKey(1)
-    if key & 0xFF == ord('q'):
-        print("🔴 Quit by user.")
-        break
+        timestamp_ms = int(frame_idx * frameTime_ms)
+        result = detector.detect_for_video(mp_image, timestamp_ms)
 
-# === CLEANUP ===
-videoObject.release()
+        if result.pose_landmarks:
+            landmarks = result.pose_landmarks[0]
+
+            # Get heel coordinates
+            l_heel = landmarks[mp.solutions.pose.PoseLandmark.LEFT_HEEL.value]
+            r_heel = landmarks[mp.solutions.pose.PoseLandmark.RIGHT_HEEL.value]
+
+            lx, ly = int(l_heel.x * w), int(l_heel.y * h)
+            rx, ry = int(r_heel.x * w), int(r_heel.y * h)
+
+            heel_px = math.sqrt((lx - rx) ** 2 + (ly - ry) ** 2)
+            heel_cm = heel_px * cm_per_pixel
+            heel_m = heel_cm / 100
+
+            # 🕒 OCR every 10 frames
+            if frame_idx % 10 == 0:
+                last_timestamp, last_conf = getDateTime(frame)
+
+            conf_str = f"{last_conf}%" if last_conf > 0 else "N/A"
+
+            # 📄 Save to log
+            log_file.write(f"🕒 Time: {last_timestamp} | conf: {conf_str}\n")
+            log_file.write(f"📏 Frame {frame_idx}: Heel distance = {heel_m:.4f} m ({heel_cm:.1f} cm)\n")
+
+        # 🖼️ GUI disabled for speed
+        # cv2.imshow("Pose Heel Measurement", frame)  # <- Skipped
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        frame_idx += 1
+
+video.release()
 cv2.destroyAllWindows()
+log_file.close()
+print("✅ Done. Results saved to heel_stride_log.txt")
