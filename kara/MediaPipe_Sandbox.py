@@ -35,7 +35,7 @@ model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 
 #Video File
 dir = r"E:\STARS\day1_data"
-file = r"25_06_03_s1_1.asf"
+file = r"Yoko_6_3_2025_4_08_45.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -117,7 +117,7 @@ options = PoseLandmarkerOptions(
                                 base_options=BaseOptions(model_asset_path=model_path,
                                                          delegate=BaseOptions.Delegate.CPU # Default is GPU, and I anin't got none
                                                          ),
-                                running_mode=VisionRunningMode.VIDEO,
+                                running_mode=VisionRunningMode.VIDEO, # Set the running mode to video
                                )
 
 landmarker = PoseLandmarker.create_from_options(options)
@@ -178,21 +178,21 @@ for i in range(int(remainingFrames)): # Go through each frame
         drawLandmark_line(frame, landmarks[29],landmarks[23]) # Draws line from left foot to left hip
         drawLandmark_line(frame, landmarks[30], landmarks[24]) # Draws line from right foot to right hip
         drawLandmark_circle(frame, landmarks[30]) # Draw circle on the right heel
-
-        #Get the location of feet and hips landmarks 
-        rthip_x = int(landmarks[24].x * width)
-        lfthip_x = int(landmarks[23].x * width)
-        rtft_y = int(landmarks[32].y * height)
+    else:
+        print(f"No pose detected at frame {i}, time {frame_timestamp_ms} ms")
+        
+    #Get the location of feet and hips landmarks 
+    rthip_x = int(landmarks[24].x * width)
+    lfthip_x = int(landmarks[23].x * width)
+    rtft_y = int(landmarks[32].y * height)
         # Crop the frame with padding
-        new_frame = crop_with_padding(frame, lfthip_x, rthip_x, rtft_y) 
+    new_frame = crop_with_padding(frame, lfthip_x, rthip_x, rtft_y) 
         #print(f"L-H: {pose_landmarker_result.pose_world_landmarks[0][29].y}"
              # f"R-H: {pose_landmarker_result.pose_world_landmarks[0][30].y}") 
-        if new_frame.size > 0:
-            cv2.imshow("Input", frame)
-        else:
+    if new_frame.size > 0:
+            cv2.imshow("Input", new_frame)
+    else:
             print("Invalid crop — skipping frame")
-    else: 
-        print(f"No landmarks detected in this frame at {frame_timestamp_ms} ms")
 
     #print(pose_landmarker_result)
     #Show the frame 

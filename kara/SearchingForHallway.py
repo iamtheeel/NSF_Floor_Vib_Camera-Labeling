@@ -18,13 +18,13 @@ from mediapipe.tasks.python import vision
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
-model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
+#model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
+model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 
 #Video File
 dir = r"E:\STARS\day1_data"
-file = r"s3_B8A44FC4B25F_6_3_2025_4_08_45.asf"
+file = r"25_06_03_s1_1.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -32,6 +32,19 @@ videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video 
 if not videoOpbject.isOpened():
     print("Error: Could not open video.")
     exit()
+
+# Get video properties    
+fps = videoOpbject.get(cv2.CAP_PROP_FPS) # Frames per second
+#print(f"FPS: {fps}")
+fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
+height, width, _ = videoOpbject.read()[1].shape # Get the width and height of the video frame
+#width = 256
+#height = 256 
+
+frameTime_ms = 1000/fps #How long of a time does each frame cover
+# Fit to the display
+dispFact = 2
+displayRez = (int(width/dispFact), int(height/dispFact))
 
 #mediaPipe settings
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
@@ -48,21 +61,8 @@ options = PoseLandmarkerOptions(
                                 running_mode=VisionRunningMode.VIDEO,
                                )
 
-landmarker = PoseLandmarker.create_from_options(options)
+landmarkerVideo = PoseLandmarker.create_from_options(options)
 #exit()
-
-# Get video properties    
-fps = videoOpbject.get(cv2.CAP_PROP_FPS) # Frames per second
-#print(f"FPS: {fps}")
-fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
-height, width, _ = videoOpbject.read()[1].shape # Get the width and height of the video frame
-#width = 256
-#height = 400 
-
-frameTime_ms = 1000/fps #How long of a time does each frame cover
-# Fit to the display
-#dispFact = 2
-#displayRez = (int(width/dispFact), int(height/dispFact))
 
 #functions
 
@@ -81,38 +81,120 @@ def drawLandmark_line(frame, feet, hips):
     thickness = 5
     cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a line from the feet to the hips
 
-clipStartFrame = (fps *35) # Start frame for the clip
+def isPersonInFrame(frame_Index):
+    
+    videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
+    
+    ret, frame = videoOpbject.read()
+    if not ret:
+        print("Error: Could not read frame.")
+        return False
+    
+    frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-frame_timestamp_ms = clipStartFrame * frameTime_ms # Timestamp for the first frame in the clip
+    frame_timestamp_ms = int(frame_Index * frameTime_ms)
 
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, int(clipStartFrame)) # Initial start point
+    if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10:
+        print(f"Invalid timestamp: {frame_timestamp_ms}")
+        return False
+
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_RGB) #Create a MediaPipe image from the frame
+    pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms)
+    # Detect the pose landmarks in each frame
+    
+    if len(pose_landmarker_result.pose_landmarks) > 0:
+        print(f"There is a person!") # If there is a pose landmarker, return True
+    else:
+        print(f"No person detected at {frame_timestamp_ms} ms")
+    #return False # If there is no pose landmarker, return False
+
+def crop_with_padding(frame, lefttHip, rightHip, rightFoot, crop_width=256):
+    # Calculate center between left and right hips
+    hip_x = (rightHip + lefttHip) // 2 # Calculate the center x position between the left and right hips
+    # Set crop bounds equidistant from the center
+    x1 = hip_x - crop_width // 2
+    x2 = hip_x + crop_width // 2
+    # Calculate how much we are out of bounds
+    pad_left   = max(0, -x1) #x1 is negative if it extends beyond the left edge of the frame
+    pad_right  = max(0, x2 - width) #x1 is negative if it extends beyond the right edge of the frame
+        #Take max of numbers to get padding amount
+    # Apply padding if needed
+    frame_padded = cv2.copyMakeBorder(frame,0,0,pad_left,pad_right,borderType=cv2.BORDER_CONSTANT,value=(0, 0, 0))  # Black padding
+     # Update crop coordinates for the padded image
+    x1_padded = x1 + pad_left
+    x2_padded = x2 + pad_right
+    #y1_padded = y1 + pad_top
+    #y2_padded = y2 + pad_top
+    # Crop the padded frame
+    cropped = frame_padded[0: rightFoot + 50, x1_padded:x2_padded]
+    print(f"Crop bounds: x1: {x1_padded}, x2: {x2_padded}, y1: 0, y2: {rightFoot + 50}")
+    return cropped   #Return the cropped frame with padding
+
+# Main code
+
+frame_Index = 0 # Frame index to check for a person
+
+isPersonInFrame(frame_Index) # Check if there is a person in the frame
+
+videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
+ret, frame = videoOpbject.read()
+if not ret:
+    print("Error: Could not read frame.")
+
+resizedFrame = cv2.resize(frame, displayRez) # Resize the frame for display
+cv2.imshow("Frame", resizedFrame)
+    
+key = cv2.waitKey(0) # Wait for a key press
+
+if key == ord('q') & 0xFF: exit()
+
+#if isPersonInFrame(frame_Index):
+   # print("Person detected in the first frame.")
+#else:
+    #print("No person detected in the first frame.")
+
+
+
+"""
+startTime = 30
+
+clipStartFrame = (fps * startTime) # Start frame for the clip
+
+#frame_timestamp_ms = clipStartFrame * frameTime_ms # Timestamp for the first frame in the clip
+
+#videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, int(clipStartFrame)) # Initial start point
+
 remainingFrames = int(fCount - clipStartFrame)
+
 for i in range(int(remainingFrames)): # Go through each frame
-    success, frame = videoOpbject.read()
-    frame_timestamp_ms = int((clipStartFrame + i) * frameTime_ms)
-    if not success:
+    success, frame = videoOpbject.read() # Read the next frame returns a boolean and the frame
+    frame_timestamp_ms = int((clipStartFrame + i) * frameTime_ms) # Update the timestamp for the current frame
+    if not success: # If the frame was not read successfully, break the loop
         print("Failed to read frame")
         break
     
-    newFrame = frame[0:250, 1188:1444]
-    newFrame_rgb = cv2.cvtColor(newFrame, cv2.COLOR_BGR2RGB)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=newFrame_rgb) #Create a MediaPipe image from the frame
+    #frame = frame[0:400, 1000:1444, :] # Crop the frame to the area of interest
+    #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame) #Create a MediaPipe image from the frame
     pose_landmarker_result = landmarker.detect_for_video(mp_image, int(frame_timestamp_ms)) # Detect the pose landmarks in each frame
-    """
+    
     if len(pose_landmarker_result.pose_world_landmarks) > 0:
         landmarks = pose_landmarker_result.pose_landmarks[0]
-        drawLandmark_circle(newFrame_rgb, landmarks[29]) # Draw circle on the left heel
-        drawLandmark_line(newFrame_rgb, landmarks[29],landmarks[23]) # Draws line from left foot to left hip
-        drawLandmark_line(newFrame_rgb, landmarks[30], landmarks[24]) # Draws line from right foot to right hip
-        drawLandmark_circle(newFrame_rgb, landmarks[30]) # Draw circle on the right heel
-        """
+        drawLandmark_circle(frame, landmarks[29]) # Draw circle on the left heel
+        drawLandmark_line(frame, landmarks[29],landmarks[23]) # Draws line from left foot to left hip
+        drawLandmark_line(frame, landmarks[30], landmarks[24]) # Draws line from right foot to right hip
+        drawLandmark_circle(frame, landmarks[30]) # Draw circle on the right heel
+       
     if pose_landmarker_result.pose_landmarks:
         for i, landmark in enumerate(pose_landmarker_result.pose_landmarks[0]):
             if landmark.visibility > 0.5:  # Or even 0.3 for partials
                 print(f"Landmark {i} detected at ({landmark.x:.2f}, {landmark.y:.2f})")
+       
     else:
         print(f"No pose detected at frame {i}, time {frame_timestamp_ms} ms")
-    cv2.imshow("Frame", newFrame_rgb)
+    resizedFrame = cv2.resize(frame, displayRez) # Resize the frame for display
+    cv2.imshow("Frame", resizedFrame)
     
     key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
+ """
