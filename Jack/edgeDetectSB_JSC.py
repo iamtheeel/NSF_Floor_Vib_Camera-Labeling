@@ -128,6 +128,7 @@ for i in range(int(frameCount)):
 
     ## Do the edge tracking
     # Define your crop region (adjust as needed)
+    # Crop the feed to get rid of everything that is not tape lines/ measurement lines
     x1, x2 = 1300, 1650
     y1, y2 = 0, int(vidHeight)
 
@@ -135,6 +136,7 @@ for i in range(int(frameCount)):
     cropped_frame = frame[y1:y2, x1:x2, :]  # Crop the color image
     blackWhite = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(blackWhite, 80, 100)
+    #hough lines is horizontal tracking 
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=40, maxLineGap=10)
 
     # Create a blank mask for lines (same size as crop, 3 channels)

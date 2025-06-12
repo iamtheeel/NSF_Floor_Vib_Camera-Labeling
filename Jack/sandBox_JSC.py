@@ -9,7 +9,6 @@ def exponential_fit(x_vals, y_vals):
     x = np.array(distances)
     y = np.array(y_values)
 
-    # Transform y to ln(y)
     ln_y = np.log(y)
 
     # Fit ln_y = b*x + ln(a) using polyfit (degree 1)
