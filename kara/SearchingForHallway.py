@@ -88,7 +88,7 @@ def isPersonInFrame(frame_Index):
     ret, frame = videoOpbject.read()
     if not ret:
         print("Error: Could not read frame.")
-        return False
+        return None
     
     frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -107,6 +107,7 @@ def isPersonInFrame(frame_Index):
     else:
         print(f"No person detected at {frame_timestamp_ms} ms")
     #return False # If there is no pose landmarker, return False
+    return frame
 
 def crop_with_padding(frame, lefttHip, rightHip, rightFoot, crop_width=256):
     # Calculate center between left and right hips
@@ -132,21 +133,25 @@ def crop_with_padding(frame, lefttHip, rightHip, rightFoot, crop_width=256):
 
 # Main code
 
-frame_Index = 0 # Frame index to check for a person
+frame_Index = 50 # Frame index to check for a person
 
-isPersonInFrame(frame_Index) # Check if there is a person in the frame
+frame = isPersonInFrame(frame_Index) # Check if there is a person in the frame
 
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
-ret, frame = videoOpbject.read()
-if not ret:
-    print("Error: Could not read frame.")
-
-resizedFrame = cv2.resize(frame, displayRez) # Resize the frame for display
-cv2.imshow("Frame", resizedFrame)
+if frame is not None:
+    ret, frame = videoOpbject.read()
+    if not ret:
+        print("Error: Could not read frame.")
+    resizedFrame = cv2.resize(frame, displayRez) # Resize the frame for display
+    cv2.imshow("Frame", resizedFrame)
+    key = cv2.waitKey(0) # Wait for a key press
+    if key == ord('q') & 0xFF: exit()
     
-key = cv2.waitKey(0) # Wait for a key press
+else:
+    print("No frame returned, exiting.")
+    exit()
 
-if key == ord('q') & 0xFF: exit()
+
+
 
 #if isPersonInFrame(frame_Index):
    # print("Person detected in the first frame.")
