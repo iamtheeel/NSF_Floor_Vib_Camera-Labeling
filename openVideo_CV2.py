@@ -1,5 +1,5 @@
 ####
-#   Joshua Mehlman
+#   Yoko Lu
 #   STARS Summer 2025
 #   Dr J Lab
 ###
@@ -72,14 +72,14 @@ for i in range(int(fCount)): # Go through each frame
     #print(f"dateTime_img type: {type(dateTime_img)}, shape: {dateTime_img.shape}")
     #print(dateTime_img[0:30, 25:40])
     dateTime_outPut = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
-    print(f"outFame: type: {type(dateTime_outPut)}")
+    #print(f"outFame: type: {type(dateTime_outPut)}")
     object = 5
     pt1 = [dateTime_outPut['left'][object], dateTime_outPut['top'][object]]
     pt2 = [dateTime_outPut['width'][object] + dateTime_outPut['left'][object], 
            dateTime_outPut['top'][object]+ dateTime_outPut['height'][object]]
     cv2.rectangle(dateTime_img, pt1, pt2, color=(255, 0, 0), thickness=1)
     dateTime_img = cv2.cvtColor(dateTime_img, cv2.COLOR_RGB2BGR) # Convert to grey scale
-    print(f": {dateTime_outPut['text'][object]}: {dateTime_outPut['conf'][object]}") 
+    print(f": {dateTime_outPut['text'][object]}: {dateTime_outPut['conf'][object]}%") 
 
 
     #outFrame = cv2.resize(frame, displayRez)

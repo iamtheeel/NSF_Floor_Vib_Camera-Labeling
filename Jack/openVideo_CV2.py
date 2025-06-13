@@ -49,7 +49,7 @@ for i in range(int(frameCount)):
         print(f"frame read failure")
         exit()
 
-    
+   
     lwresframe = cv2.resize(frame, displayRez)
     #blurred = cv2.GaussianBlur(frame, (31, 31), 0)
     blackWhite = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -61,7 +61,7 @@ for i in range(int(frameCount)):
     dateTime_str = dateTimeOutput['text']
     dateTime_conf = dateTimeOutput['conf']
     print(f"Date: {dateTime_str[4]}, Conf:{dateTime_conf[4]}",
-          f"Time: {dateTime_str[5]}, Conf:{dateTime_conf[5]}") y
+          f"Time: {dateTime_str[5]}, Conf:{dateTime_conf[5]}") 
     
 
     cv2.imshow("Video Frame", dateTime_img) # Display the frame in a window named "Video Frame"

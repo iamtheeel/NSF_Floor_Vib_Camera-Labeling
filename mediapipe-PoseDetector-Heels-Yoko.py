@@ -29,7 +29,7 @@ if not video.isOpened():
     print("❌ Error: Could not open video.")
     exit()
 
-fps = video.get(cv2.CAP_PROP_FPS)q
+fps = video.get(cv2.CAP_PROP_FPS)
 frameTime_ms = 1000 / fps
 w = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))

@@ -40,7 +40,7 @@ options = PoseLandmarkerOptions(
                                                          ),
                                 running_mode=VisionRunningMode.VIDEO,
                                )
-            )
+
 
 with PoseLandmarker.create_from_options(options) as landmarker:
   # The landmarker is initialized. Use it here.

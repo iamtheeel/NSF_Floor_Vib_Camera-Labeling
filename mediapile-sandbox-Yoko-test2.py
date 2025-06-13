@@ -30,9 +30,9 @@ model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task" #5.8B
 
 #Video File
-dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-fileName = f"{dir}/{file}"
+video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
+video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+fileName = f"{video_dir}/{video_file}"
 
 ## Open our video File
 # Make a video object
