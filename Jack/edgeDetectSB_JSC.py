@@ -11,11 +11,12 @@ import time
 import numpy as np
 import csv
 
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-filename = f"{dir}/{file}" # Path to the video file
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
+file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
+filename = f"{dir}/{file}"  # Path to the video file
 print(filename)
 
+canny_dims = 30, 150
 
 videoObject = cv2.VideoCapture(filename) # Open the video file
 if not videoObject.isOpened():
@@ -31,7 +32,7 @@ def perameters(videoPeram, text):
     return output
 
 # Function to filter and merge close points
-def merge_close_y(points, threshold=8):
+def merge_close_y(points, threshold=12):
     sorted_points = sorted(points, key=lambda p: p[1])
     
     merged_points = []
@@ -78,8 +79,8 @@ def y_to_distance_for_points(filtered_points):
         print(f"x={point[0]:.2f}, y={y:.2f}, distance={distance:.2f} ft")
 
 def exponential_fit(x_vals, y_vals):
-    x = np.array(distances)
-    y = np.array(y_values)
+    #x = np.array(distances)
+    #y = np.array(y_values)
 
     # Transform y to ln(y)
     ln_y = np.log(y)
@@ -109,7 +110,7 @@ displayRez = (int(vidWidth/dispFact), int(vidHeight/dispFact))
 ##video player
 #video start point
 vidStartFrame = 2000
-videoObject.set(cv2.CAP_PROP_POS_FRAMES, int(vidStartFrame))
+#videoObject.set(cv2.CAP_PROP_POS_FRAMES, int(vidStartFrame))
 
 
 for i in range(int(frameCount)): 
@@ -128,14 +129,16 @@ for i in range(int(frameCount)):
 
     ## Do the edge tracking
     # Define your crop region (adjust as needed)
-    x1, x2 = 1300, 1650
-    y1, y2 = 0, int(vidHeight)
+    # Crop the feed to get rid of everything that is not tape lines/ measurement lines
+    x1, x2 = 1200, 1450
+    y1, y2 = 200, int(vidHeight-200)
 
     # Video processing to find the lines
     cropped_frame = frame[y1:y2, x1:x2, :]  # Crop the color image
     blackWhite = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(blackWhite, 80, 100)
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=40, maxLineGap=10)
+    edges = cv2.Canny(blackWhite, *canny_dims)
+    #hough lines is horizontal tracking 
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=20, minLineLength= 50, maxLineGap=10)
 
     # Create a blank mask for lines (same size as crop, 3 channels)
     line_mask = np.zeros_like(cropped_frame)
@@ -159,8 +162,14 @@ for i in range(int(frameCount)):
     overlay_mask = np.zeros_like(frame)
     overlay_mask[y1:y2, x1:x2] = line_mask
 
-    # Overlay the mask onto the original frame
-    overlay = cv2.addWeighted(frame, 1.0, overlay_mask, 1.0, 0)
+    # Convert the original frame to grayscale and apply Canny
+    gray_base = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    canny_base = cv2.Canny(gray_base, *canny_dims)
+    # Convert single-channel Canny output to 3 channels for overlay
+    canny_base_color = cv2.cvtColor(canny_base, cv2.COLOR_GRAY2BGR)
+
+    # Overlay the mask onto the Canny edge-detected base image
+    overlay = cv2.addWeighted(canny_base_color, 1.0, overlay_mask, 1.0, 0)
 
     # Resize for display
     display_frame = cv2.resize(overlay, displayRez)

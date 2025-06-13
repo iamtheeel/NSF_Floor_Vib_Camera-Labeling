@@ -22,8 +22,8 @@ model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_lite.tas
 #model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_full.task" #9.0 MB
 # model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
 
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
+file = 'subject_2_test_3_6-11-2025_5-46-23 PM.asf'
 fileName = f"{dir}/{file}"  # Path to the video file
 
 ## Open our video File
