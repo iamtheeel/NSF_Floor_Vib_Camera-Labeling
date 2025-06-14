@@ -20,7 +20,9 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
 # === MODEL PATH ===
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task" #Trial 1
 
 # === VIDEO FILE ===
 video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
@@ -80,7 +82,7 @@ def calc_dist(p1, p2):
     return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
 
 # === Frame Timing (manual override) ===
-frameTime_ms = 33000  # 1 frame every 33 seconds
+frameTime_ms = 1000/fps #How long of a time does each frame cover, convert from seconds to milliseconds / a.k.a. frame rate 
 
 # === Clip Setup ===
 clipRunTime_s = 0
