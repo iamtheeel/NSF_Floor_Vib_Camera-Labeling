@@ -10,6 +10,7 @@ import cv2 # pip install opencv-python
 import time
 import numpy as np
 import csv
+from scipy.optimize import curve_fit
 
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
 file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
@@ -75,25 +76,23 @@ def y_to_distance(y):
 def y_to_distance_for_points(filtered_points):
     for point in filtered_points:
         y = point[1]
-        distance = np.log(y/2550) / -0.0386  # Calculate distance from y
-        print(f"x={point[0]:.2f}, y={y:.2f}, distance={distance:.2f} ft")
+        #distance = 49 + -6.41 * np.log(y) 
+        distance = -17.0851 / (y + -480.3108) # Calculate distance from y
+        print(f"x={point[0]:.2f}, y={y:.2f}, distance={distance:.2f} m")
 
-def exponential_fit(x_vals, y_vals):
-    #x = np.array(distances)
-    #y = np.array(y_values)
+def ideal_equation(y_pixels, z_distances, initial_guess=None)
+    # Define the model: Z = a / (y + b) + c
+    def inverse_model(y, a, b, c):
+        return a / (y + b) + c
 
-    # Transform y to ln(y)
-    ln_y = np.log(y)
+    if initial_guess is None:
+        initial_guess = [-20, 2300, 0]
 
-    # Fit ln_y = b*x + ln(a) using polyfit (degree 1)
-    b, ln_a = np.polyfit(x, ln_y, 1)
-
-    a = np.exp(ln_a)
-
-    # Return the exponential equation as a string
-    equation = f"y = {a:.4f} * e^({b:.4f}x)"
-    return equation
-    
+    # Fit the model to the data using curve_fit
+    params, _ = curve_fit(inverse_model, y_pixels, z_distances, p0=initial_guess, maxfev=5000)
+    a, b, c = params
+    print(f"Fitted equation: Z(y) = {a:.4f} / (y + {b:.4f}) + {c:.4f}")
+    return a, b, c
 
 
 #establish video perameters here
@@ -131,7 +130,7 @@ for i in range(int(frameCount)):
     # Define your crop region (adjust as needed)
     # Crop the feed to get rid of everything that is not tape lines/ measurement lines
     x1, x2 = 1200, 1450
-    y1, y2 = 200, int(vidHeight-200)
+    y1, y2 = 0, int(vidHeight-00)
 
     # Video processing to find the lines
     cropped_frame = frame[y1:y2, x1:x2, :]  # Crop the color image

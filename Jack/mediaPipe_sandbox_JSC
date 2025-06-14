@@ -82,7 +82,7 @@ def draw_landmarks_on_image(image, pose_landmarker_result):
         cv2.circle(image, (x_px, y_px), 4, (0, 255, 0), -1)  # Green dot
     return image
 
-clipStartSecs = 25 #Start at this many seconds into the video
+clipStartSecs = 0 #Start at this many seconds into the video
 clipEndSecs = 50 #End this many seconds into the video
 
 clipStartTime_f = fps * clipStartSecs
