@@ -125,12 +125,24 @@ for i in range(clipRunFrames): # Go through each frame this many times
         drawLandmark(frame, landmarks[29], [255, 0, 0]) # Left heel
         drawLandmark(frame, landmarks[30], [0, 255, 0]) # Right heel
 
-        landmarks_w = pose_landmarker_result.pose_world_landmarks[0] 
-        dX = landmarks_w[29].x - landmarks_w[30].x
-        dY = landmarks_w[29].y - landmarks_w[30].y
-        dZ = landmarks_w[29].z - landmarks_w[30].z
-        strideLen = math.sqrt(math.pow(dX,2) + math.pow(dY, 2) + math.pow(dZ, 2))
-        print(f"stride length: {strideLen:.3f}m, {strideLen*3.28084:.3f} ft")
+        #landmarks_w = pose_landmarker_result.pose_world_landmarks[0] 
+        #dX = landmarks_w[29].x - landmarks_w[30].x
+        #dY = landmarks_w[29].y - landmarks_w[30].y
+        #dZ = landmarks_w[29].z - landmarks_w[30].z
+        #strideLen = math.sqrt(math.pow(dX,2) + math.pow(dY, 2) + math.pow(dZ, 2))
+        #print(f"stride length: {strideLen:.3f}m, {strideLen*3.28084:.3f} ft")
+
+        # Use normalized landmarks for pixel calculations
+    landmarks_px = pose_landmarker_result.pose_landmarks[0]
+    x1 = landmarks_px[29].x * w
+    y1 = landmarks_px[29].y * h
+    x2 = landmarks_px[30].x * w
+    y2 = landmarks_px[30].y * h
+
+    stride_px = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    print(f"👣 Stride (pixel distance): {stride_px:.1f} px")
+
+
     if pose_landmarker_result.segmentation_masks is not None:
         mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
         cv2.imshow("Seg mask", mask)

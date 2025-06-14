@@ -9,16 +9,21 @@
 
 ### Settings
 dataTimeRange_s = [0,0] # [0 0] for full dataset
+dataFreqRange_hz = [0,0] # will want this later
 
-dir = 'StudentData/25_06_03/Subject_1'
+#dir = 'StudentData/25_06_03/Subject_1'
 #dataFile = "data/Yoko_s3_3.hdf5"
-dataFile = "Kera_2.hdf5"
+#dataFile = "Kera_2.hdf5"
+dir = 'StudentData/25_06_13/'
+dataFile = "triggerTime_1.hdf5"
+
 dirFile = f"{dir}/{dataFile}"
 
 # What data are we interested in
 chToPlot = [7, 8, 9, 10]
 
 # Libraries needed
+from datetime import datetime
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
@@ -36,6 +41,45 @@ def print_attrs(name, obj): #From Chatbot
         if isinstance(obj, h5py.Dataset):
             print(f"  📊 Dataset - Shape: {obj.shape}, Dtype: {obj.dtype}")
 
+def get_peram(perams, peramName:str, asStr=False):
+    if asStr:
+        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
+    else:
+        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
+    units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
+    print(f"{peramName}: {peram_value} {units_value}")
+
+    return peram_value, units_value
+
+def get_perams(perams, peramName:str, asType='dateTime'):
+    values = [
+        #row['value'].decode()
+        datetime.fromtimestamp(float(row['value'].decode()))
+        for row in perams
+            if row['parameter'] == peramName.encode()
+    ]
+
+    return values 
+def loadPeramiters(dataFile):
+    with h5py.File(dataFile, 'r') as h5file:
+        filePerams = h5file['experiment/general_parameters'][:]
+
+    #Extract the data capture info from the file
+    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
+    recordLen_s, _ = get_peram(filePerams, 'record_length')
+    preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
+
+    print(filePerams.dtype.names)   # Show the peramiter field names
+    print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
+
+    # Now that we know which is the timepoints
+    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
+
+    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
+    if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
+
+
+    return dataCapRate_hz, recordLen_s, preTrigger_s 
 
 def loadData(dataFile, trial=-1):
     """
@@ -52,29 +96,29 @@ def loadData(dataFile, trial=-1):
     print(f"Loading file: {dataFile}")
 
     with h5py.File(dataFile, 'r') as h5file:
-        if trial == 0:
-            h5file.visititems(print_attrs)
+        #if trial == 0: h5file.visititems(print_attrs)
 
-        filePerams = h5file['experiment/general_parameters'][:]
+        #filePerams = h5file['experiment/general_parameters'][:]
         if trial >= 0:
-            #print(f"Loading trial: {trial}")
             dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
+            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
+            triggerTimes, _ = get_peram(runPerams, 'triggerTime', asStr=False)
+            triggerTimes = next(
+                                row['value'] for row in runPerams
+                                if row['parameter'] == b'triggerTime' and row['id'] == trial
+                                ).decode() #Get from string
+            triggerTimes = datetime.fromtimestamp(float(triggerTimes))
+            print(f"Loaded trial: {trial}")
         elif trial == -1: # Load the whole thing
-            print(f"Loading the full dataset")
             dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
+            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
+            triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
         # Otherwize, we are just after the peramiters
+    # Done getting the file link
 
-    #Extract the data capture rate from the file
-    # Data cap rate is the first entery (number 0)
-    dataCapRate_hz =filePerams[0]['value']  # Some files needs decode, others can't have it
-    #dataCapRate_hz =int(filePerams[0]['value'].decode('utf-8'))  # Some files needs decode, others can't have it
-
-    dataCapUnits = filePerams[0]['units'].decode('utf-8')
     if trial <=0:
-        print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
-        print(filePerams.dtype.names)   # Show the peramiter field names
-        print(f"Data Cap Rate ({filePerams[0]['parameter'].decode('utf-8')}): {dataCapRate_hz} {dataCapUnits}")
-    
+        #print(filePerams.dtype.names)   # Show the peramiter field names
+        #print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
         # Look at the shape of the data
         print(f"Data type: {type(dataFromFile)}, shape: {dataFromFile.shape}")
 
@@ -91,14 +135,12 @@ def loadData(dataFile, trial=-1):
         if trial == 0:
             print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
 
-    if trial <=0:
-        # Now that we know which is the timepoints
-        timeLen_s   = (numTimePts-1)/dataCapRate_hz # How far apart is each time point
-        if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
-        #if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
-        print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {timeLen_s} seconds long")
+    #if dataTimeRange_s[1] == 0: #If 0, set to length of data
+    #    timeLen_s   = (numTimePts)/dataCapRate_hz # How far apart is each time point
+    #    dataTimeRange_s[1] = timeLen_s
+    #    print(f"dataTimeRange: {dataTimeRange_s}")
 
-    return dataFromFile, dataCapRate_hz
+    return dataFromFile, triggerTimes
 
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
@@ -121,6 +163,7 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     # The time range
     dataPoint_from = int(timeRange_sec[0]*dataCapRate_hz)
     dataPoint_to = int(timeRange_sec[1]*dataCapRate_hz)
+    print(f"Data Point Range: {dataPoint_from}:{dataPoint_to} at {dataCapRate_hz} hz")
 
     # Ruturn the cut up data
     if trial > 0:
@@ -200,15 +243,19 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
 #### Do the stuff
 # Load the data 
-#dummyData, dataCapRate_hz = loadData(dataFile=dirFile, trial=0 ) # Just get the peramiters
+# Get the peramiters once
+dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile) 
+#print(triggerTime[0].strftime("%Y-%m-%d %H:%M:%S.%f"))
+#exit()
 
-#trialList = [0, 1, 2, 7]
-trialList = [0]
+trialList = [0, 1, 2 ]
 #for trial in range(20): # Cycle through the trials
 for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dirFile, trial=trial)
+    dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    print(f"Trigger Time: {triggerTimes.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
