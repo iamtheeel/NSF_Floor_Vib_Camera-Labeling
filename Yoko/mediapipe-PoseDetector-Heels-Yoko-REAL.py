@@ -21,8 +21,8 @@ from mediapipe.tasks.python import vision
 
 # === MODEL PATH ===
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
-#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task" #Trial 1
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task" #Trial 1
 
 # === VIDEO FILE ===
 video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
