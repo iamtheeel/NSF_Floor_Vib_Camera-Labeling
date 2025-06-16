@@ -80,7 +80,7 @@ def y_to_distance_for_points(filtered_points):
         distance = -17.0851 / (y + -480.3108) # Calculate distance from y
         print(f"x={point[0]:.2f}, y={y:.2f}, distance={distance:.2f} m")
 
-def ideal_equation(y_pixels, z_distances, initial_guess=None)
+def ideal_equation(y_pixels, z_distances, initial_guess=None):
     # Define the model: Z = a / (y + b) + c
     def inverse_model(y, a, b, c):
         return a / (y + b) + c
