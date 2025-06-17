@@ -37,7 +37,9 @@ if not videoOpbject.isOpened():
 fps = videoOpbject.get(cv2.CAP_PROP_FPS) # Frames per second
 #print(f"FPS: {fps}")
 fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
-height, width, _ = videoOpbject.read()[1].shape # Get the width and height of the video frame
+#height, width, _ = videoOpbject.read()[1].shape doing this reads the first frame, which we don't want to do yet
+width = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)) # Width of the video frame
+height = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Height of the video frame
 #width = 256
 #height = 256 
 
@@ -45,6 +47,7 @@ frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
+FIXED_CROP_WIDTH = width // 3
 
 #mediaPipe settings
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
@@ -81,76 +84,142 @@ def drawLandmark_line(frame, feet, hips):
     thickness = 5
     cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a line from the feet to the hips
 
-def isPersonInFrame(frame_Index):
+def isPersonInFrame(frame_Index, frame):
+    #videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
+    #ret, frame = videoOpbject.read() # Read the frame at the specified index
+    #if not ret: # If the frame was not read successfully, return None
+    #    print("Error: Could not read frame.")
+    #    return None
     
-    videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
-    
-    ret, frame = videoOpbject.read()
-    if not ret:
-        print("Error: Could not read frame.")
-        return None
-    
-    frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    frame_timestamp_ms = int(frame_Index * frameTime_ms)
-
-    if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10:
+    frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) #Convert frame from BGR to RGB
+    frame_timestamp_ms = int(frame_Index * frameTime_ms) 
+    if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10: # Check if the timestamp is valid
         print(f"Invalid timestamp: {frame_timestamp_ms}")
-        return False
+        return None #Exit function if the timestamp is invalid
 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_RGB) #Create a MediaPipe image from the frame
-    pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms)
-    # Detect the pose landmarks in each frame
-    
-    if len(pose_landmarker_result.pose_landmarks) > 0:
-        print(f"There is a person!") # If there is a pose landmarker, return True
-    else:
-        print(f"No person detected at {frame_timestamp_ms} ms")
+    pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms) #Detect the pose landmarks in the frame
+    #If there are no pose landmarkers
+    if len(pose_landmarker_result.pose_landmarks) > 0: 
+        print(f"ISPERSON FUNCTION: for frame index: {frame_Index} with frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}") # If there is a pose landmarker, return True
+        print(f"There is a person!")
+    #else:
+        #print(f"No person detected at {frame_timestamp_ms} ms")
+        # No person detected, handle accordingly
     #return False # If there is no pose landmarker, return False
-    return frame
+    return frame, pose_landmarker_result
 
-def crop_with_padding(frame, lefttHip, rightHip, rightFoot, crop_width=256):
-    # Calculate center between left and right hips
-    hip_x = (rightHip + lefttHip) // 2 # Calculate the center x position between the left and right hips
-    # Set crop bounds equidistant from the center
-    x1 = hip_x - crop_width // 2
-    x2 = hip_x + crop_width // 2
+def crop_with_padding_first(frame, landmark_result):
+    #Checks if there are landmarkers 
+    landmarks = landmark_result.pose_landmarks[0]
+    frame_height, frame_width = frame.shape[:2] 
+    
+    print(f"CROPWITHPADDING_FIRST Frame width: {frame_width}.")
+
+    #Horizontal landmarks WRT frame width
+    rightHip = int(landmarks[24].x * width)
+    lefttHip = int(landmarks[23].x * width)
+    print(f"CROPWITHPADDING_FIRST Right hip: {rightHip}. Left hip: {lefttHip}.")
+    #crop_width = frame_width #/ dispFact
+    hip_x = (rightHip + lefttHip) // 2 # Calculate horizontal center between left and right hips 
+    print(f"CROPWITHPADDING_FIRST center distance:{hip_x}.")
+    #Vertical landmarks
+    rightShoulder = int(landmarks[12].y * height) #Gets coord of right should WRT to width of screen
+    lefttShoulder = int(landmarks[11].y * height) #Gets coord of left should WRT to width of screen
+    
+    # Set horizontal crop bounds equidistant from the center of hips
+    #crop_width = frame_width/dispFact
+
+    new_minwidth = hip_x - FIXED_CROP_WIDTH // 2
+    new_maxwidth = hip_x + FIXED_CROP_WIDTH // 2
+
+    #print(f"CROPWITHPADDING_FIRST function. Cropwidth: {crop_width}")
+    print(f"CROPWITHPADDING_FIRST function. Minwidth: {new_minwidth}. Paddded maxwidth: {new_maxwidth}.")
+
     # Calculate how much we are out of bounds
-    pad_left   = max(0, -x1) #x1 is negative if it extends beyond the left edge of the frame
-    pad_right  = max(0, x2 - width) #x1 is negative if it extends beyond the right edge of the frame
-        #Take max of numbers to get padding amount
-    # Apply padding if needed
-    frame_padded = cv2.copyMakeBorder(frame,0,0,pad_left,pad_right,borderType=cv2.BORDER_CONSTANT,value=(0, 0, 0))  # Black padding
-     # Update crop coordinates for the padded image
-    x1_padded = x1 + pad_left
-    x2_padded = x2 + pad_right
+    #If x1 / x2 are out of bounds (maximum), we need to pad the frame
+     #pad_left   = max(0, -new_minwidth) #x1 is negative if it extends beyond the left edge of the frame
+     #pad_right  = max(0, new_maxwidth - frame_width) #x2 is positive if it extends beyond the right edge of the frame
+        
+    #Apply padding if needed
+    #frame_padded = cv2.copyMakeBorder(frame,0,0,pad_left,pad_right,borderType=cv2.BORDER_CONSTANT,value=(0, 0, 0))  # Black padding
+    #Add padding to new frame bounds if needed
+     #padded_minwidth= int(new_minwidth + pad_left)
+     #padded_maxwidth = int(new_maxwidth + pad_right)
+    
+    #print(f"CROPWITHPADDING_FIRST function. Padded minwidth: {padded_minwidth}. Paddded maxwidth: {padded_maxwidth}.")
+    #Saves visibility data for right heel and right shoulder
+    #head_visibility = landmarks[12].visibility
+    #right_hip_visibility = landmarks[32].visibility
+
+    #if right_hip_visibility > head_visibility:
+       # print(f"Bottom half of person")
+    #else:
+        #print(f"Top half of person")
     #y1_padded = y1 + pad_top
     #y2_padded = y2 + pad_top
     # Crop the padded frame
-    cropped = frame_padded[0: rightFoot + 50, x1_padded:x2_padded]
-    print(f"Crop bounds: x1: {x1_padded}, x2: {x2_padded}, y1: 0, y2: {rightFoot + 50}")
-    return cropped   #Return the cropped frame with padding
+    #new_frame = frame_padded[:, x1_padded:x2_padded]
+    #print(f"Crop bounds: x1: {x1_padded}, x2: {x2_padded}")
+    return new_minwidth, new_maxwidth    #Return the frame
 
 # Main code
+start_frame = 1620 # Start frame for the clip
+end_frame = 1642 # End frame for the clip2
+print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
-frame_Index = 50 # Frame index to check for a person
+# Read frames until we reach the frame prior to start frame
+videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, start_frame-1)
 
-frame = isPersonInFrame(frame_Index) # Check if there is a person in the frame
-
-if frame is not None:
-    ret, frame = videoOpbject.read()
-    if not ret:
-        print("Error: Could not read frame.")
-    resizedFrame = cv2.resize(frame, displayRez) # Resize the frame for display
-    cv2.imshow("Frame", resizedFrame)
+max_height = height
+min_height = 0
+max_width = width
+min_width = 0
+#Read through the specified frame count
+for frame_Index in range(start_frame, end_frame): 
+    success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
+    if not success: # If the frame was not read successfully, break the loop
+        print("Failed to read frame")
+        exit()
+    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width] #Taking a full sized frame and 
+    #Shrinking it down to incorrect dimensions
+    #Changes dimensions before finding landmarks
+    resizedFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for display
+    cv2.imshow("Frame", resizedFrame) #displays frame
     key = cv2.waitKey(0) # Wait for a key press
     if key == ord('q') & 0xFF: exit()
-    
-else:
-    print("No frame returned, exiting.")
-    exit()
+    if newDim_Frame is not None: #Failsafe
+        frame, landmarkers = isPersonInFrame(frame_Index, newDim_Frame) # Checks if there is a person in the frame. Returns frame and landmarkers.
+    if len(landmarkers.pose_landmarks) > 0:
+        min_width, max_width = crop_with_padding_first(frame, landmarkers)
+        print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
+        #new_Frame = crop_with_padding(frame, landmarkers) #Returns cropped frame
+        #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
+    else:
+        print(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}") 
+        print(f"No person detected for frame index: {frame_Index}")
 
-
+for frame_Index in range(start_frame+1, end_frame): 
+    success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
+    if not success: # If the frame was not read successfully, break the loop
+        print("Failed to read frame")
+        exit()
+    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width] #Changes dimensions before finding landmarks
+    resizedFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for display
+    cv2.imshow("Frame", resizedFrame) #displays frame
+    key = cv2.waitKey(0) # Wait for a key press
+    if key == ord('q') & 0xFF: exit()
+    if newDim_Frame is not None: #Failsafe
+        frame, landmarkers = isPersonInFrame(frame_Index, newDim_Frame) # Checks if there is a person in the frame. Returns frame and landmarkers.
+    if len(landmarkers.pose_landmarks) > 0:
+        min_width, max_width = crop_with_padding_second(frame, landmarkers)
+        print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
+        #new_Frame = crop_with_padding(frame, landmarkers) #Returns cropped frame
+        #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
+    else:
+        print(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}") 
+        print(f"No person detected for frame index: {frame_Index}")
+   
 
 
 #if isPersonInFrame(frame_Index):
