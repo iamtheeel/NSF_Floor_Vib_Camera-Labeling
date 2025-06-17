@@ -26,8 +26,8 @@ from mediapipe.tasks.python import vision   # installs with mediapipe
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_lite.task' # 5.5 MiB
-#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
-model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
+model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
+#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
 
 #Video File
 dir = 'StudentData/25_06_03/Subject_2'
@@ -116,7 +116,7 @@ for i in range(clipRunFrames): # Go through each frame this many times
         print(f"Frame read failure")
         exit()
 
-    getDateTime(frame) #Read the date and time from the upper left of the frame
+    #getDateTime(frame) #Read the date and time from the upper left of the frame
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
     if len(pose_landmarker_result.pose_landmarks)  > 0:
