@@ -28,15 +28,15 @@ fileName = f"{dir}/{file}"  # Path to the video file
 
 ## Open our video File
 # Make a video object
-videoOpbject = cv2.VideoCapture(fileName)
+videoObject = cv2.VideoCapture(fileName)
 
-if not videoOpbject.isOpened():
+if not videoObject.isOpened():
     print("Error: Could not open video.")
     exit()
-fps = videoOpbject.get(cv2.CAP_PROP_FPS)
-fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT)
-w = videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)
-h = videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)
+fps = videoObject.get(cv2.CAP_PROP_FPS)
+fCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT)
+w = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH)
+h = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
@@ -72,6 +72,16 @@ def getDateTime(frame):
     print(f"Date: {dateTime_outPut['text'][dateStr_num]}, conf:{dateTime_outPut['conf'][dateStr_num]}",
           f"Time: {dateTime_outPut['text'][timeStr_num]}, conf:{dateTime_outPut['conf'][timeStr_num]}")
 
+
+def getTime(frame):
+    dateTime_img = frame[0:45, 0:384]  # Crop the date and time area
+    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
+    dateTime_img_bw = cv2.bitwise_not(dateTime_img_bw)  # Invert the colors
+    dateTime_outPut = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
+    timeStr_num = 5
+    return dateTime_outPut['text'][timeStr_num]
+
+
 def draw_landmarks_on_image(image, pose_landmarker_result):
     if not pose_landmarker_result.pose_landmarks:
         return image
@@ -92,12 +102,18 @@ if clipEndTime_f < 0:
     exit()
 
 
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, clipStartTime_f)
+prev_time = None
+frames_since_last = 0
+    
 
-frame_timestamp_ms = 0 # Skip to frame x before starting the loop
+#videoObject.set(cv2.CAP_PROP_POS_FRAMES, clipStartTime_f)
+print(fps)
+print(1000/30)
+newFPS = 1000/30
+#frame_timestamp_ms = 0 # Skip to frame x before starting the loop
 for i in range(int(clipEndTime_f)): # Go through each frame
-    frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
-    sucess, frame = videoOpbject.read() #.read() returns a boolean value and the frame itself. 
+    #frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
+    sucess, frame = videoObject.read() #.read() returns a boolean value and the frame itself. 
                                     # sucess (t/f): Did this frame read sucessfully?
                                     # frame:  The video image
     # Check to see if we actualy loaded a frame 
@@ -105,20 +121,31 @@ for i in range(int(clipEndTime_f)): # Go through each frame
         print(f"Frame read failure")
         exit()
 
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+    #mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+    #pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
     #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
-    print(pose_landmarker_result)
+    #print(pose_landmarker_result)
 
-    getDateTime(frame)
+    ##time rollover variables
+    
+    current_time = getTime(frame)
 
+    if prev_time is None:
+        prev_time = current_time
+
+    if current_time != prev_time:
+        print(f"Frames since last rollover: {frames_since_last}")
+        frames_since_last = 0  # Start counting for the new time value
+        prev_time = current_time
+
+    frames_since_last += 1
     # Draw landmarks on the frame
-    frame_with_landmarks = draw_landmarks_on_image(frame.copy(), pose_landmarker_result)
+    #frame_with_landmarks = draw_landmarks_on_image(frame.copy(), pose_landmarker_result)
 
     #Show the frame 
-    frame_with_landmarks = cv2.resize(frame_with_landmarks, displayRez)
-    cv2.imshow("Input", frame_with_landmarks)
-    print(f"Frame: {i}, timeStamp: {frame_timestamp_ms}")
+    frame = cv2.resize(frame, displayRez)
+    #cv2.imshow("Input", frame)
+    #print(f"Frame: {i}, timeStamp: {(i*newFPS - 12*newFPS)/1000}")
 
 
     key = cv2.waitKey(int(1))

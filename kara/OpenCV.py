@@ -11,13 +11,15 @@ import time
 
 #Third party
 import cv2 # pip install opencv-python
-import tesseract # pip install pytesseract
+import pytesseract # pip install pytesseract
+import mediapipe # pip install mediapipe
+
 
 #in house
 
 # The File
-dir = 'E:\STARS\day1_data'
-file = '25_06_03_s1_1.asf'
+dir = r'E:\STARS\day1_data'
+file = r'25_06_03_s1_1.asf'
 fileName = f"{dir}/{file}"
 
 # Make a video object
@@ -56,13 +58,26 @@ for i in range(int(fCount)): # Go through each frame
 
     #Change the resulution to fit
     lwResFrame = cv2.resize(frame, displayRez)
+    dateTime_img = frame[0:46,0:400] # Get the date time image from the top left corner
+    dateTime_img_bw = 255 - dateTime_img
+    dateTime_outPut = pytesseract.image_to_data(dateTime_img, output_type= pytesseract.Output.DICT) # Use pytesseract to read the date time
+    cv2.imshow("Date Time",  dateTime_img) # Show the date time image
+    print(f"{dateTime_outPut["text"][4]}")
+    print(f"outFrame: type: {type(dateTime_outPut)}")
+    object = 5
+    pt1 = [dateTime_outPut['left'][object], dateTime_outPut['top'][object]]
+    pt2 = [dateTime_outPut['left'][object] + dateTime_outPut['left'][object], 
+            dateTime_outPut['top'][object] + dateTime_outPut['height'][object]]
+    cv2.rectangle(dateTime_img,pt1,pt2,(255,0,0),3)
     cv2.imshow("Frame", lwResFrame)
     tEnd_s = time.time()
     pTime_ms = 1000*(tEnd_s - tStart_s)
     delayTime_ms = frameDelay_ms - pTime_ms
     if delayTime_ms <= 0: delayTime_ms = 1 # make sure we don't have a negitive delay
 
+ 
     #print(f"fDelay: {frameDelay_ms}, proc Time: {pTime_ms}, delay: {delayTime_ms} ms")
-    key = cv2.waitKey(int(delayTime_ms))
+    key = cv2.waitKey(int(0))
     #key = cv2.waitKey(int(1))
-    if key == ord('q') & 0xFF: exit()
+    if key == ord('q'):
+        break
