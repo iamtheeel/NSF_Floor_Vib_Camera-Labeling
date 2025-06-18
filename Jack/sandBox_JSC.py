@@ -154,5 +154,5 @@ for i in range(clipRunFrames): # Go through each frame this many times
     #print(f"Frame: {i}, timeStamp: {frame_timestamp_ms} ms")
 
 
-    key = cv2.waitKey(int(0))
+    key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
