@@ -60,8 +60,8 @@ def get_perams(perams, peramName:str, asType='dateTime'):
         for row in perams
             if row['parameter'] == peramName.encode()
     ]
-
     return values 
+
 def loadPeramiters(dataFile):
     with h5py.File(dataFile, 'r') as h5file:
         #h5file.visititems(print_attrs)
@@ -78,9 +78,6 @@ def loadPeramiters(dataFile):
 
     print(filePerams.dtype.names)   # Show the peramiter field names
     print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
-
-    # Now that we know which is the timepoints
-    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
 
     if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
