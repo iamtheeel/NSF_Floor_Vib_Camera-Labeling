@@ -114,8 +114,13 @@ def loadData(dataFile, trial=-1):
             runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
             triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
         # Otherwize, we are just after the peramiters
-    # Done getting the file link
 
+    #Extract the data capture rate from the file
+    # Data cap rate is the first entery (number 0)
+    dataCapRate_hz =filePerams[0]['value']  # Some files needs decode, others can't have it, this is recent data
+    #dataCapRate_hz =int(filePerams[0]['value'].decode('utf-8'))  # Some files needs decode, others can't have it
+
+    dataCapUnits = filePerams[0]['units'].decode('utf-8')
     if trial <=0:
         #print(filePerams.dtype.names)   # Show the peramiter field names
         #print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
@@ -243,12 +248,10 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
 #### Do the stuff
 # Load the data 
-# Get the peramiters once
-dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile) 
-#print(triggerTime[0].strftime("%Y-%m-%d %H:%M:%S.%f"))
-#exit()
+dummyData, dataCapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
 
-trialList = [0, 1, 2 ]
+#trialList = [0, 1, 2, 7]
+trialList = [0]
 #for trial in range(20): # Cycle through the trials
 for i, trial in enumerate(trialList): # Cycle through the trials
 
@@ -264,8 +267,8 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     print(f"Data len: {dataBlock_sliced.shape}")
 
     # Plot the data in the time domain
-    timeYRange = 0.01
-    #timeYRange = np.max(np.abs(dataBlock_sliced))
+    #timeYRange = 0.01
+    timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
     plt.show() # Open the plot(s)
