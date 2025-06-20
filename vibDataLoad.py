@@ -253,9 +253,9 @@ trialList = [0, 1, 2 ]
 for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
     #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
-    print(f"Trigger Time: {triggerTimes.strftime("%Y-%m-%d %H:%M:%S.%f")}")
+    print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
