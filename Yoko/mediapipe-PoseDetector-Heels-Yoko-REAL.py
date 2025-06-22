@@ -10,23 +10,31 @@
 import time
 import math
 import csv
+import sys
+import os
 
-import cv2  # pip install opencv-python
+import cv2
 import numpy as np
-import pytesseract  # pip install pytesseract to do OCR
+import pytesseract
 
-import mediapipe as mp  # pip install mediapipe
+import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+# === Fix import path to reach distance_position.py ===
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from distance_position import find_dist_from_y  # ✅ Import your custom function
+
 # === MODEL PATH ===
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
-#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task" #Trial 1
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
 
 # === VIDEO FILE ===
-video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
-video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
+#video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
+video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
 fileName = f"{video_dir}/{video_file}"
 
 # === Open video ===
@@ -56,95 +64,88 @@ options = PoseLandmarkerOptions(
 )
 landmarker = PoseLandmarker.create_from_options(options)
 
-# === OCR timestamp function ===
-def getDateTime(frame):
-    dateTime_img = frame[0:46, 0:384, :]
-    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)
-    dateTime_img_bw = 255 - dateTime_img_bw
-    data = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
-    try:
-        date_str = data['text'][4]
-        time_str = data['text'][5]
-        return f"{date_str} {time_str}"
-    except:
-        return "OCR Error"
-
-def drawLandmark(frame, landmark, color=(0, 0, 255)):
-    center = (int(landmark.x * w), int(landmark.y * h))
-    cv2.circle(frame, center, 6, color, -1)
-
-def drawLine(frame, lm1, lm2, color):
-    pt1 = (int(lm1.x * w), int(lm1.y * h))
-    pt2 = (int(lm2.x * w), int(lm2.y * h))
-    cv2.line(frame, pt1, pt2, color, 3)
-
-def calc_dist(p1, p2):
-    return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
-
-# === Frame Timing (manual override) ===
-frameTime_ms = 1000/fps #How long of a time does each frame cover, convert from seconds to milliseconds / a.k.a. frame rate 
-
-# === Clip Setup ===
-clipRunTime_s = 0
-clipStartTime_s = 30
-clipStartFrame = 0
-clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
-
-videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
-
-# === CSV SETUP ===
+# === CSV SETUP (✅ correct position: outside loop) ===
 csv_path = "heel_tracking_output.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["Frame", "Timestamp_ms", "LeftHeel_Y", "RightHeel_Y"])
+    writer.writerow([
+        "Frame", "Timestamp_ms",
+        "LeftHeel_Y", "RightHeel_Y",
+        "LeftHeel_Distance", "RightHeel_Distance"
+    ])
+
+# === Frame Timing ===
+frameTime_ms = 1000 / fps
+
+# === Clip Setup ===
+clipRunTime_s = 0
+clipStartTime_s = 0
+clipRunFrames = int(fCount - (clipStartTime_s * fps)) if clipRunTime_s == 0 else int(clipRunTime_s * fps)
+
+videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
 
 # === Frame Loop ===
 for i in range(clipRunFrames):
-    frame_timestamp_ms = int((clipStartFrame + i) * frameTime_ms)
+    frame_timestamp_ms = frameTime_ms * i
     success, frame = videoObject.read()
     if not success:
         print("⚠️ Frame read failure")
         break
 
-    timestamp_str = getDateTime(frame)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+    pose_landmarker_result = landmarker.detect_for_video(mp_image, int(frame_timestamp_ms))
 
     if len(pose_landmarker_result.pose_landmarks) > 0:
+        adjusted_time_ms = int(frame_timestamp_ms)
+
         landmarks = pose_landmarker_result.pose_landmarks[0]
         landmarks_w = pose_landmarker_result.pose_world_landmarks[0]
 
-        # Draw landmarks
-        drawLandmark(frame, landmarks[29], [255, 0, 0])    # Left heel
-        drawLandmark(frame, landmarks[30], [0, 255, 0])    # Right heel
-        drawLandmark(frame, landmarks[23], [255, 255, 0])  # Left hip
-        drawLandmark(frame, landmarks[24], [0, 255, 255])  # Right hip
+        # === Heel Y values (normalized and pixel)
+        left_heel_y_norm = landmarks[29].y
+        right_heel_y_norm = landmarks[30].y
+        left_heel_y_px = left_heel_y_norm * h
+        right_heel_y_px = right_heel_y_norm * h
 
-        drawLine(frame, landmarks[29], landmarks[23], (255, 100, 100))
-        drawLine(frame, landmarks[30], landmarks[24], (100, 255, 100))
+        # === Distances using your function
+        left_dist = find_dist_from_y(left_heel_y_px, debug=True)
+        right_dist = find_dist_from_y(right_heel_y_px, debug=True)
 
-        strideLen = calc_dist(landmarks_w[29], landmarks_w[30])
-        left_leg_len = calc_dist(landmarks_w[23], landmarks_w[29])
-        right_leg_len = calc_dist(landmarks_w[24], landmarks_w[30])
+        # === Print
+        print(f"Left heel Y: {left_heel_y_norm:.4f} → {left_dist:.4f} m | Right heel Y: {right_heel_y_norm:.4f} → {right_dist:.4f} m")
+        print(f"frametime: {adjusted_time_ms:.0f} ms")
 
-        print(f"Frame timestamp: {frame_timestamp_ms} ms | left heel: {landmarks[29].y}, right heel: {landmarks[30].y}")
-
-        # Save to CSV
+        # === Save to CSV (✅ append only)
         with open(csv_path, mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
                 i,
-                frame_timestamp_ms,
-                landmarks[29].y,
-                landmarks[30].y
+                adjusted_time_ms,
+                left_heel_y_norm,
+                right_heel_y_norm,
+                left_dist,
+                right_dist
             ])
 
-        # Optional: show segmentation mask
-        if pose_landmarker_result.segmentation_masks is not None:
-            mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
-            cv2.imshow("Seg mask", mask)
+        # === Draw landmarks
+        def drawLandmark(frame, landmark, color=(0, 0, 255)):
+            center = (int(landmark.x * w), int(landmark.y * h))
+            cv2.circle(frame, center, 6, color, -1)
 
-    # Show frame
+        def drawLine(frame, lm1, lm2, color):
+            pt1 = (int(lm1.x * w), int(lm1.y * h))
+            pt2 = (int(lm2.x * w), int(lm2.y * h))
+            cv2.line(frame, pt1, pt2, color, 3)
+
+        drawLandmark(frame, landmarks[29], [255, 0, 0])    # Left heel
+        drawLandmark(frame, landmarks[30], [0, 255, 0])    # Right heel
+        drawLandmark(frame, landmarks[23], [255, 255, 0])  # Left hip
+        drawLandmark(frame, landmarks[24], [0, 255, 255])  # Right hip
+        drawLine(frame, landmarks[29], landmarks[23], (255, 100, 100))
+        drawLine(frame, landmarks[30], landmarks[24], (100, 255, 100))
+
+    # === Show frame
     frame = cv2.resize(frame, displayRez)
     cv2.imshow("Input", frame)
 

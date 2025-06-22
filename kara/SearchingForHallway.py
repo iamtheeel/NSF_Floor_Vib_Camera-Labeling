@@ -47,7 +47,6 @@ frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
-FIXED_CROP_WIDTH = width // 3
 
 #mediaPipe settings
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
@@ -76,13 +75,21 @@ def drawLandmark_circle(frame, landmark):
     center = int(landmark.x*width), int(landmark.y*height) #place center of the circle at the landmark position
     #print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")q
     cv2.circle(frame, center, radius, color, thickness) # Draw a circle at the landmark position
-
-def drawLandmark_line(frame, feet, hips):
+    
+def drawLandmark_square(frame, minWidth, maxWidth, minHeight, maxHeight):
     color = [255, 0, 0] # Line will be red
-    pt1_ft = (int(feet.x*width),int(feet.y*height)) #First point is on the feet
-    pt2_hips = (int(hips.x*width), int(hips.y*height)) #second point is on the hips
+    #pt1_ft = (int(feet.x*width),int(feet.y*height)) #First point is on the feet
+    #pt2_hips = (int(hips.x*width), int(hips.y*height)) #second point is on the hips
+    xyPt = int(minWidth),int(minHeight) #upper left pt
+    XyPt = int(maxWidth), int(minHeight) #upper right pt
+    XYPt = int(maxWidth), int(maxHeight) #lower right pt
+    xYPt = int(minWidth), int(maxHeight) #lower left pt
     thickness = 5
-    cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a line from the feet to the hips
+    #Connects points to draw a square
+    cv2.line(frame, xyPt, XyPt, color, thickness) 
+    cv2.line(frame, XyPt, XYPt, color, thickness) #
+    cv2.line(frame, XYPt, xYPt, color, thickness)
+    cv2.line(frame, xYPt, xyPt, color, thickness)
 
 def isPersonInFrame(frame_Index, frame):
     #videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index) # Set the video object to the frame we want to check
@@ -109,32 +116,133 @@ def isPersonInFrame(frame_Index, frame):
     #return False # If there is no pose landmarker, return False
     return frame, pose_landmarker_result
 
-def crop_with_padding_first(frame, landmark_result):
+def crop_with_padding(frame, landmark_result):
     #Checks if there are landmarkers 
     landmarks = landmark_result.pose_landmarks[0]
     frame_height, frame_width = frame.shape[:2] 
-    
-    print(f"CROPWITHPADDING_FIRST Frame width: {frame_width}.")
 
+    min_width = max_width = landmarks[0].x
+    min_height = max_height = landmarks[0].y
+    min_width_index = max_width_index = min_height_index = max_height_index = 0
+
+    #Iterates through all landmarks to find max and min: x value = width, y value = height
+    for i in range(len(landmarks)):
+        x = landmarks[i].x
+        y = landmarks[i].y
+
+        if x < min_width:
+            min_width = x
+            min_width_index = i
+        if x > max_width:
+            max_width = x
+            max_width_index = i
+        if y < min_height:
+            min_height = y
+            min_height_index = i
+        if y > max_height:
+            max_height = y
+            max_height_index = i
+
+
+    #Normalize values to frame
+    min_width = min_width*frame_width
+    max_width = max_width*frame_width
+    min_height=min_height*frame_height
+    max_height=max_height*frame_height
+    #print(f"CROPWITHPADDING function: The MINIMUM width is {min_width} at index {min_width_index}")
+    #print(f"CROPWITHPADDING function: The MAXIMUM width is {max_width} at index {max_width_index}")
+    #print(f"CROPWITHPADDING function: The MINIMUM height is {min_height} at index {min_height_index}")
+    #print(f"CROPWITHPADDING function: The MAXIMUM height is {max_height} at index {max_height_index}")
+
+    tot_width = max_width - min_width
+    tot_height = max_height - min_height
+    
+    print(f"CROPWITHPADDING function: The TOTAL width is {tot_width}")
+    print(f"CROPWITHPADDING function: The TOTAL height is {tot_height}")
+    
+    #expand_width = (1*tot_width*frame_width)//2
+    #expand_height = (1*tot_height*frame_height)//2
+
+    #Padded_minwidth = min_width*frame_width - expand_width
+    #Padded_maxwidth = max_width*frame_width + expand_width
+
+    #Padded_minheight = min_height*frame_height - expand_height
+    #Padded_maxheight = max_height*frame_height + expand_height
+
+    #total_widthPadded = Padded_maxwidth - Padded_minwidth
+    #total_heightPadded = Padded_maxheight - Padded_minheight
+    
+    Ratio = width/height # Ratio to apply to cropped frame
+
+    current_ratio = tot_width / tot_height
+    center_width = min_width + tot_width / 2
+    center_height = min_height + tot_height / 2
+
+    if current_ratio < Ratio:
+    # Too narrow → increase width (or crop height)
+        adjust_width = (tot_height * Ratio) / 2
+        min_width = center_width - adjust_width
+        max_width = center_width + adjust_width
+        print(f"Width adjusted. Min width {min_width}. Max width {max_width}")
+    else:
+    # Too wide → crop width (or increase height)
+        adjust_height = (tot_width / Ratio) / 2
+        min_height = center_height - adjust_height
+        max_height = center_height + adjust_height
+        print(f"Height adjusted. Min height {min_height}. Max height {max_height}")
+    
+    tot_width = max_width - min_width
+    tot_height = max_height - min_height
+    
+    center_width = min_width + tot_width / 2
+    center_height = min_height + tot_height / 2
+    
+    scale_factor = 1.2
+
+    new_width = tot_width * scale_factor
+    new_height = tot_height * scale_factor
+
+    min_width = center_width - new_width / 2
+    max_width = center_width + new_width / 2
+
+    min_height = center_height - new_height / 2
+    max_height = center_height + new_height / 2
+    #if tot_height > adjust_height: 
+      #  min_width = (center_width - adjust_width)
+      #  max_width = (center_width + adjust_width)
+    #    print(f"If statement initialised. Min width {min_width}. Max width {max_width}")
+    #else:
+     #   min_height = center_height - adjust_height
+     #   max_height = center_height + adjust_height
+
+
+
+    #Padded_maxwidth = 1.1*max_width*frame_width
+    #Padded_minheight = .8*min_height*frame_height
+    #Padded_maxheight = 1.1*max_height*frame_height
+
+    #min_width_loc = frame_width*np.min(landmarks.x)
+    #print(f"CROPWITHPADDING Frame width: {frame_width}.")
+ 
     #Horizontal landmarks WRT frame width
-    rightHip = int(landmarks[24].x * width)
-    lefttHip = int(landmarks[23].x * width)
-    print(f"CROPWITHPADDING_FIRST Right hip: {rightHip}. Left hip: {lefttHip}.")
+    #rightHip = int(landmarks[24].x * width)
+    #lefttHip = int(landmarks[23].x * width)
+    #print(f"CROPWITHPADDING Right hip: {rightHip}. Left hip: {lefttHip}.")
     #crop_width = frame_width #/ dispFact
-    hip_x = (rightHip + lefttHip) // 2 # Calculate horizontal center between left and right hips 
-    print(f"CROPWITHPADDING_FIRST center distance:{hip_x}.")
+    #hip_x = (rightHip + lefttHip) // 2 # Calculate horizontal center between left and right hips 
+    #print(f"CROPWITHPADDING center distance:{hip_x}.")
     #Vertical landmarks
-    rightShoulder = int(landmarks[12].y * height) #Gets coord of right should WRT to width of screen
-    lefttShoulder = int(landmarks[11].y * height) #Gets coord of left should WRT to width of screen
+    #rightShoulder = int(landmarks[12].y * height) #Gets coord of right should WRT to width of screen
+    #lefttShoulder = int(landmarks[11].y * height) #Gets coord of left should WRT to width of screen
     
     # Set horizontal crop bounds equidistant from the center of hips
     #crop_width = frame_width/dispFact
 
-    new_minwidth = hip_x - FIXED_CROP_WIDTH // 2
-    new_maxwidth = hip_x + FIXED_CROP_WIDTH // 2
+    #new_minwidth = hip_x - FIXED_CROP_WIDTH // 2
+    #new_maxwidth = hip_x + FIXED_CROP_WIDTH // 2
 
     #print(f"CROPWITHPADDING_FIRST function. Cropwidth: {crop_width}")
-    print(f"CROPWITHPADDING_FIRST function. Minwidth: {new_minwidth}. Paddded maxwidth: {new_maxwidth}.")
+    #print(f"CROPWITHPADDING function. Minwidth: {new_minwidth}. Padded maxwidth: {new_maxwidth}.")
 
     # Calculate how much we are out of bounds
     #If x1 / x2 are out of bounds (maximum), we need to pad the frame
@@ -161,10 +269,10 @@ def crop_with_padding_first(frame, landmark_result):
     # Crop the padded frame
     #new_frame = frame_padded[:, x1_padded:x2_padded]
     #print(f"Crop bounds: x1: {x1_padded}, x2: {x2_padded}")
-    return new_minwidth, new_maxwidth    #Return the frame
-
+    return min_width, max_width, min_height, max_height   #Return the frame
+    
 # Main code
-start_frame = 1620 # Start frame for the clip
+start_frame = 1450 # Start frame for the clip
 end_frame = 1642 # End frame for the clip2
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
@@ -184,35 +292,21 @@ for frame_Index in range(start_frame, end_frame):
     newDim_Frame = raw_frame[min_height:max_height,min_width:max_width] #Taking a full sized frame and 
     #Shrinking it down to incorrect dimensions
     #Changes dimensions before finding landmarks
-    resizedFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for display
+    
+    drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
+    resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
     cv2.imshow("Frame", resizedFrame) #displays frame
     key = cv2.waitKey(0) # Wait for a key press
-    if key == ord('q') & 0xFF: exit()
-    if newDim_Frame is not None: #Failsafe
-        frame, landmarkers = isPersonInFrame(frame_Index, newDim_Frame) # Checks if there is a person in the frame. Returns frame and landmarkers.
-    if len(landmarkers.pose_landmarks) > 0:
-        min_width, max_width = crop_with_padding_first(frame, landmarkers)
-        print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
-        #new_Frame = crop_with_padding(frame, landmarkers) #Returns cropped frame
-        #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
-    else:
-        print(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}") 
-        print(f"No person detected for frame index: {frame_Index}")
 
-for frame_Index in range(start_frame+1, end_frame): 
-    success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
-    if not success: # If the frame was not read successfully, break the loop
-        print("Failed to read frame")
-        exit()
-    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width] #Changes dimensions before finding landmarks
-    resizedFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for display
-    cv2.imshow("Frame", resizedFrame) #displays frame
+    resizedCropFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for displayd
+    cv2.imshow("Frame", resizedCropFrame) #displays frame
     key = cv2.waitKey(0) # Wait for a key press
+    
     if key == ord('q') & 0xFF: exit()
-    if newDim_Frame is not None: #Failsafe
-        frame, landmarkers = isPersonInFrame(frame_Index, newDim_Frame) # Checks if there is a person in the frame. Returns frame and landmarkers.
+    if resizedFrame is not None: #Failsafe "if newDim_Frame is not None:"
+        frame, landmarkers = isPersonInFrame(frame_Index, raw_frame) #newDim_Frame Checks if there is a person in the frame. Returns frame and landmarkers.
     if len(landmarkers.pose_landmarks) > 0:
-        min_width, max_width = crop_with_padding_second(frame, landmarkers)
+        min_width, max_width, min_height, max_height = crop_with_padding(frame, landmarkers)
         print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
         #new_Frame = crop_with_padding(frame, landmarkers) #Returns cropped frame
         #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
