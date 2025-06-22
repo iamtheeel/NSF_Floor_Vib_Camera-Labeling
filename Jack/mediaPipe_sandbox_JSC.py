@@ -33,7 +33,7 @@ videoObject = cv2.VideoCapture(fileName)
 if not videoObject.isOpened():
     print("Error: Could not open video.")
     exit()
-fps = videoObject.get(cv2.CAP_PROP_FPS)
+fps = 30
 fCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT)
 w = videoObject.get(cv2.CAP_PROP_FRAME_WIDTH)
 h = videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -92,7 +92,7 @@ def draw_landmarks_on_image(image, pose_landmarker_result):
         cv2.circle(image, (x_px, y_px), 4, (0, 255, 0), -1)  # Green dot
     return image
 
-clipStartSecs = 0 #Start at this many seconds into the video
+clipStartSecs = 5 #Start at this many seconds into the video
 clipEndSecs = 50 #End this many seconds into the video
 
 clipStartTime_f = fps * clipStartSecs
@@ -104,15 +104,16 @@ if clipEndTime_f < 0:
 
 prev_time = None
 frames_since_last = 0
+
     
 
-#videoObject.set(cv2.CAP_PROP_POS_FRAMES, clipStartTime_f)
+videoObject.set(cv2.CAP_PROP_POS_FRAMES, clipStartTime_f)
 print(fps)
-print(1000/30)
-newFPS = 1000/30
-#frame_timestamp_ms = 0 # Skip to frame x before starting the loop
+print(1000/fps)
+newFPS = 1000/fps
+frame_timestamp_ms = 0 # Skip to frame x before starting the loop
 for i in range(int(clipEndTime_f)): # Go through each frame
-    #frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
+    frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
     sucess, frame = videoObject.read() #.read() returns a boolean value and the frame itself. 
                                     # sucess (t/f): Did this frame read sucessfully?
                                     # frame:  The video image
@@ -121,11 +122,25 @@ for i in range(int(clipEndTime_f)): # Go through each frame
         print(f"Frame read failure")
         exit()
 
-    #mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    #pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
-    #annotated_image = draw_landmarks_on_image(image.numpy_view(), pose_landmarker_result)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+    annotated_image = draw_landmarks_on_image(frame.copy(), pose_landmarker_result)
     #print(pose_landmarker_result)
 
+    # Assume 'landmarks' is your list of pose landmarks and 'frame' is your image
+    h, w, _ = frame.shape
+
+    # MediaPipe Pose indices for foot landmarks
+    LEFT_HEEL = 29
+    RIGHT_HEEL = 30
+
+    if pose_landmarker_result.pose_landmarks:
+        landmarks = pose_landmarker_result.pose_landmarks[0]
+        for idx, color in zip([LEFT_HEEL, RIGHT_HEEL],
+                            [(255,0,0), (0,255,0)]):
+            x = int(landmarks[idx].x * w)
+            y = int(landmarks[idx].y * h)
+            cv2.circle(frame, (x, y), 3, color, -1)
     ##time rollover variables
     
     current_time = getTime(frame)
@@ -144,7 +159,7 @@ for i in range(int(clipEndTime_f)): # Go through each frame
 
     #Show the frame 
     frame = cv2.resize(frame, displayRez)
-    #cv2.imshow("Input", frame)
+    cv2.imshow("Input", frame)
     #print(f"Frame: {i}, timeStamp: {(i*newFPS - 12*newFPS)/1000}")
 
 
