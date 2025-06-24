@@ -24,6 +24,7 @@ chToPlot = [1, 2, 3, 4, 5, 6, 7, 10]
 
 # Libraries needed
 from datetime import datetime
+from datetime import timedelta
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
@@ -142,6 +143,9 @@ def loadData(dataFile, trial=-1):
 
     return dataFromFile, triggerTimes
 
+def sec_to_hms(sec):
+    return str(timedelta(seconds=int(sec)))
+
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
@@ -186,9 +190,10 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     """
     numTimePts = dataBlockToPlot.shape[1]
     if domainToPlot == "time":
-        xAxis_data = np.linspace(xAxisRange[0], xAxisRange[1], numTimePts) #start, stop, number of points
-        xAxis_str = f"Time"
-        xAxisUnits_str = "(s)"
+        start_time_sec = (triggerTimes - triggerTimes.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+        xAxis_data = start_time_sec + np.arange(numTimePts) / dataCapRate_hz
+        xAxis_str = f"Clock Time"
+        xAxisUnits_str = "(s since midnight)"
 
     if domainToPlot == "freq":
         xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
@@ -223,7 +228,8 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         axs[i].plot(xAxis_data, yAxis_data)
     
         # Set the Axis limits and scale
-        axs[i].set_xlim(xAxisRange) 
+        #axs[i].set_xlim(xAxisRange) 
+        axs[i].set_xlim([xAxis_data[0], xAxis_data[-1]])
         axs[i].set_ylim(yAxisRange)
         if logX: axs[i].set_xscale('log')  # Set log scale
         if logY: axs[i].set_yscale('log')  # Set log scale
@@ -235,7 +241,9 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
     #Only show the x-axis on the last plot
     axs[-1].get_xaxis().set_visible(True)
-    axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
+    axs[-1].set_xlabel("Time (s)")
+    axs[-1].set_xticks(np.linspace(xAxis_data[0], xAxis_data[-1], 10))
+    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)
 
     #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
     #plt.close()

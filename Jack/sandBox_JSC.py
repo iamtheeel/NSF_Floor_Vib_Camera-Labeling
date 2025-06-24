@@ -100,7 +100,7 @@ clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRu
 
 prev_time = None
 frames_since_last = 0
-first_rollover_time = None  # To store the OCR time string
+first_rollover_time = None
 first_rollover_frame = None
 first_rollover_timestamp_ms = None
 first_rollover_detected = False
@@ -116,7 +116,7 @@ videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
 csv_path = "heel_tracking_output.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["Frame", "Timestamp_ms", "LeftHeel_Y", "RightHeel_Y"])
+    writer.writerow(["Display_Time", "LeftHeel_Y", "RightHeel_Y"])
 
 # === Frame Loop ===
 for i in range(clipRunFrames):
@@ -127,6 +127,7 @@ for i in range(clipRunFrames):
         break
 
     current_time = getDateTime(frame)  # or getTime(frame) if you want just the time
+    display_time = current_time
 
     if prev_time is None:
         prev_time = current_time
@@ -173,10 +174,9 @@ for i in range(clipRunFrames):
         with open(csv_path, mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
-                i,
-                frame_timestamp_ms,
-                landmarks[29].y,
-                landmarks[30].y
+                display_time,                # The OCR time + ms string
+                landmarks[29].y * h,         # Left heel position in pixels
+                landmarks[30].y * h          # Right heel position in pixels
             ])
 
 
