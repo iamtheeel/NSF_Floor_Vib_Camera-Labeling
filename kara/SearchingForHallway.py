@@ -101,7 +101,6 @@ def drawLandmark_square(frame, minWidth, maxWidth, minHeight, maxHeight):
     cv2.line(frame, xYPt, xyPt, color, thickness)
 
 def isPersonInFrame(frame, frameIndex):
-    print(f"frame: type{type(frame)}, shape: {frame.shape}")
 
     frame_timestamp_ms = int(frameIndex * frameTime_ms) 
     if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10: # Check if the timestamp is valid
@@ -110,20 +109,12 @@ def isPersonInFrame(frame, frameIndex):
 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame) #Create a MediaPipe image from the frame
     pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms) #Detect the pose landmarks in the frame
-    #pose_landmarker_result = landmarkerVideo.detect(mp_image) #Detect the pose landmarks in the frame
+    
     #If there are no pose landmarkers
     if len(pose_landmarker_result.pose_landmarks) > 0: 
-        #print(f"ISPERSON FUNCTION: for frame index: {frame_Index} with frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}") # If there is a pose landmarker, return True
-        #print(f"There is a person!")
-        print(f"RAW_FILE visibility for frame {frameIndex} is {pose_landmarker_result.pose_landmarks[0][30].visibility}")
         return True, pose_landmarker_result
     else:
         return False, None
-    #else:
-        #print(f"No person detected at {frame_timestamp_ms} ms")
-        # No person detected, handle accordingly
-    #return False # If there is no pose landmarker, return False
-     #pose_landmarker_result
 
 def crop_with_padding(frame, landmarks):
     #Checks if there are landmarkers 
