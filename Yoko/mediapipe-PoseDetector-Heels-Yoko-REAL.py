@@ -27,16 +27,21 @@ from distance_position import find_dist_from_y  # ✅ Import your custom functio
 
 # === MODEL PATH ===
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
 
 # === VIDEO FILE ===
 #video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
 #video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
-video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
-video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
-fileName = f"{video_dir}/{video_file}"
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#fileName = f"{video_dir}/{video_file}"
 
+model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
+#Video File
+dir = r"E:\STARS\day1_data"
+file = r"25_06_03_s1_1.asf"
+fileName = f"{dir}/{file}"
 # === Open video ===
 videoObject = cv2.VideoCapture(fileName)
 if not videoObject.isOpened():
@@ -65,7 +70,7 @@ options = PoseLandmarkerOptions(
 landmarker = PoseLandmarker.create_from_options(options)
 
 # === CSV SETUP (✅ correct position: outside loop) ===
-csv_path = "heel_tracking_output.csv"
+csv_path = r"E:\STARS\myfile2.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([
