@@ -1,271 +1,224 @@
+####
+#   Jack Capito
+#   STARS Summer 2025
+#   Dr J Lab
 ###
-# main.py
-# Joshua Mehlman
-# MIC Lab
-# Spring, 2025
-###
-# Minimum Case DataLoad, time domain
-###
+# Pose tracking with MediaPipe and OCR + CSV output
+####
 
-### Settings
-dataTimeRange_s = [0,0] # [0 0] for full dataset
-dataFreqRange_hz = [0,0] # will want this later
+# === Imports ===
+import time
+import math
+import matplotlib.pyplot as plt
+import csv
 
-#dir = 'StudentData/25_06_03/Subject_1'
-#dataFile = "data/Yoko_s3_3.hdf5"
-#dataFile = "Kera_2.hdf5"
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_13\Subject_2'
-dataFile = "triggerTime_1.hdf5"
+import sys
+import os
+sys.path.append(os.path.abspath('...'))
 
-dirFile = f"{dir}/{dataFile}"
+from distance_position import find_dist_from_y
 
-# What data are we interested in
-chToPlot = [7, 8, 9, 10]
+import cv2  # pip install opencv-python
+import numpy as np
+import pytesseract  # pip install pytesseract to do OCR
 
-# Libraries needed
-from datetime import datetime
-import h5py                             # For loading the data : pip install h5py
-import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
-import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
-                                        # The footstep cwt requires an older verstion of numpy
+import mediapipe as mp  # pip install mediapipe
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-### 
-# Functions
-###
+# === MODEL PATH ===
+#model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_lite.task" #5.5 MB
+#model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_full.task" #9.0 MB
+model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
 
-## Data Loaders
-def print_attrs(name, obj): #From Chatbot
-        print(f"\n📂 Path: {name}")
-        for key, val in obj.attrs.items():
-            print(f"  🔧 Attribute - {key}: {val}")
-        if isinstance(obj, h5py.Dataset):
-            print(f"  📊 Dataset - Shape: {obj.shape}, Dtype: {obj.dtype}")
+# === VIDEO FILE ===
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
+file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
+fileName = f"{dir}/{file}"  # Path to the video file
+print(fileName)
 
-def get_peram(perams, peramName:str, asStr=False):
-    if asStr:
-        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
+# === Open video ===
+videoObject = cv2.VideoCapture(fileName)
+if not videoObject.isOpened():
+    print("❌ Error: Could not open video.")
+    exit()
+
+fps = 30
+fCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT)
+w = int(videoObject.get(cv2.CAP_PROP_FRAME_WIDTH))
+h = int(videoObject.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+dispFact = 2
+displayRez = (int(w / dispFact), int(h / dispFact))
+
+# === MediaPipe Setup ===
+BaseOptions = mp.tasks.BaseOptions
+PoseLandmarker = mp.tasks.vision.PoseLandmarker
+PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
+
+options = PoseLandmarkerOptions(
+    base_options=BaseOptions(model_asset_path=model_path, delegate=BaseOptions.Delegate.CPU),
+    running_mode=VisionRunningMode.VIDEO,
+    output_segmentation_masks=True
+)
+landmarker = PoseLandmarker.create_from_options(options)
+
+# === OCR timestamp function ===
+def getDateTime(frame):
+    dateTime_img = frame[0:46, 0:384, :]
+    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)
+    dateTime_img_bw = 255 - dateTime_img_bw
+    data = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
+    try:
+        time_str = data['text'][5]
+        return f"{time_str}"
+    except:
+        return "OCR Error"
+
+def drawLandmark(frame, landmark, color=(0, 0, 255)):
+    center = (int(landmark.x * w), int(landmark.y * h))
+    cv2.circle(frame, center, 6, color, -1)
+
+def drawLine(frame, lm1, lm2, color):
+    pt1 = (int(lm1.x * w), int(lm1.y * h))
+    pt2 = (int(lm2.x * w), int(lm2.y * h))
+    cv2.line(frame, pt1, pt2, color, 3)
+
+def calc_dist(p1, p2):
+    return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
+
+# === Frame Timing (manual override) ===
+frameTime_ms = 1000/30 #How long of a time does each frame cover, convert from seconds to milliseconds / a.k.a. frame rate 
+
+# === Clip Setup ===
+clipRunTime_s = 20
+clipStartTime_s = 10
+clipStartFrame = 0
+clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
+
+
+prev_time = None
+frames_since_last = 0
+first_rollover_time = None
+first_rollover_frame = None
+first_rollover_timestamp_ms = None
+first_rollover_detected = False
+last_rollover_ocr_time = None
+ms_since_last_rollover = 0
+frames_since_rollover = 0
+
+display_times = []
+
+videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
+
+# === CSV SETUP ===
+csv_path = "heel_tracking_output.csv"
+with open(csv_path, mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(["Display_Time", "LeftHeel_Y", "RightHeel_Y"])
+
+# === Frame Loop ===
+for i in range(clipRunFrames):
+    frame_timestamp_ms = int((clipStartFrame + i) * frameTime_ms)
+    success, frame = videoObject.read()
+    if not success:
+        print("⚠️ Frame read failure")
+        break
+
+    current_time = getDateTime(frame)  # or getTime(frame) if you want just the time
+    display_time = current_time
+
+    if prev_time is None:
+        prev_time = current_time
+
+    if current_time != prev_time:
+        if not first_rollover_detected:
+            first_rollover_detected = True
+            last_rollover_ocr_time = current_time
+            ms_since_last_rollover = 0
+            frames_since_rollover = 0
+            print(f"First OCR rollover at frame {i}, OCR time: {current_time}")
+        else:
+            last_rollover_ocr_time = current_time
+            ms_since_last_rollover = 0
+            frames_since_rollover = 0
+        prev_time = current_time
+
+    frames_since_rollover += 1
+    ms_since_last_rollover = ((frames_since_rollover - 1) * frameTime_ms) % 1000
+
+    # After the first rollover, display the OCR time plus ms since last rollover
+    if first_rollover_detected:
+        # Format: OCR time + ms since last rollover
+        display_time = f"{last_rollover_ocr_time}.{int(ms_since_last_rollover):03d}"
+        print(f"Vid time: {display_time}")
+        display_times.append(display_time)
     else:
-        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
-    units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
-    print(f"{peramName}: {peram_value} {units_value}")
-
-    return peram_value, units_value
-
-def get_perams(perams, peramName:str, asType='dateTime'):
-    values = [
-        #row['value'].decode()
-        datetime.fromtimestamp(float(row['value'].decode()))
-        for row in perams
-            if row['parameter'] == peramName.encode()
-    ]
-
-    return values 
-def loadPeramiters(dataFile):
-    with h5py.File(dataFile, 'r') as h5file:
-        filePerams = h5file['experiment/general_parameters'][:]
-
-    #Extract the data capture info from the file
-    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
-    recordLen_s, _ = get_peram(filePerams, 'record_length')
-    preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
-
-    print(filePerams.dtype.names)   # Show the peramiter field names
-    print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
-
-    # Now that we know which is the timepoints
-    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
-
-    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
-    if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
+        display_times.append("")
 
 
-    return dataCapRate_hz, recordLen_s, preTrigger_s 
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
+    if len(pose_landmarker_result.pose_landmarks) > 0:
+        landmarks = pose_landmarker_result.pose_landmarks[0]
+        landmarks_w = pose_landmarker_result.pose_world_landmarks[0]
 
-def loadData(dataFile, trial=-1):
-    """
-    Loads the data form an hdf version 5 file
+        # Draw landmarks
+        drawLandmark(frame, landmarks[29], [255, 0, 0])    # Left heel
+        drawLandmark(frame, landmarks[30], [0, 255, 0])    # Right heel
+        
+        print(f"Foot position | left heel: {(landmarks[29].y)*h:.0f}, right heel: {(landmarks[30].y)*h:.0f}")
 
-    Args:
-        dataFile: String of the data file name and location
-
-    Returns:
-        numpy: data 
-        int: Data Capture Rate
-
-    """
-    print(f"Loading file: {dataFile}")
-
-    with h5py.File(dataFile, 'r') as h5file:
-        #if trial == 0: h5file.visititems(print_attrs)
-
-        #filePerams = h5file['experiment/general_parameters'][:]
-        if trial >= 0:
-            dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
-            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
-            triggerTimes, _ = get_peram(runPerams, 'triggerTime', asStr=False)
-            triggerTimes = next(
-                                row['value'] for row in runPerams
-                                if row['parameter'] == b'triggerTime' and row['id'] == trial
-                                ).decode() #Get from string
-            triggerTimes = datetime.fromtimestamp(float(triggerTimes))
-            print(f"Loaded trial: {trial}")
-        elif trial == -1: # Load the whole thing
-            dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
-            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
-            triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
-        # Otherwize, we are just after the peramiters
-    # Done getting the file link
-
-    if trial <=0:
-        #print(filePerams.dtype.names)   # Show the peramiter field names
-        #print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
-        # Look at the shape of the data
-        print(f"Data type: {type(dataFromFile)}, shape: {dataFromFile.shape}")
-
-    # We happen to know that:
-    if trial < 0:
-        numTrials = dataFromFile.shape[0]
-        numSensors = dataFromFile.shape[1]
-        numTimePts = dataFromFile.shape[2]
-        print(f"The dataset has: {numTrials} trials, {numSensors} sensors, {numTimePts} timepoints")
-
-    else:
-        numSensors = dataFromFile.shape[0]
-        numTimePts = dataFromFile.shape[1]
-        if trial == 0:
-            print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
-
-    #if dataTimeRange_s[1] == 0: #If 0, set to length of data
-    #    timeLen_s   = (numTimePts)/dataCapRate_hz # How far apart is each time point
-    #    dataTimeRange_s[1] = timeLen_s
-    #    print(f"dataTimeRange: {dataTimeRange_s}")
-
-    return dataFromFile, triggerTimes
-
-## Data slicers
-def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
-    """
-    Cuts the data by:
-        ch
-    
-    Args:
-        dataBlock: the raw data [Trial, ch, timePoints]
-        trial: if -1, then the data is already pre-cut for trial
-
-    Returns:
-        numpy: the cut data
-    """
-
-    # The ch list
-    chList_zeroIndexed = [ch - 1 for ch in chList]  # Convert to 0-based indexing
-    print(f"ChList index: {chList_zeroIndexed}")
-
-    # The time range
-    dataPoint_from = int(timeRange_sec[0]*dataCapRate_hz)
-    dataPoint_to = int(timeRange_sec[1]*dataCapRate_hz)
-    print(f"Data Point Range: {dataPoint_from}:{dataPoint_to} at {dataCapRate_hz} hz")
-
-    # Ruturn the cut up data
-    if trial > 0:
-        return dataBlock[trial, chList_zeroIndexed, dataPoint_from:dataPoint_to]
-    else:
-        return dataBlock[chList_zeroIndexed, dataPoint_from:dataPoint_to]
+        # Save to CSV
+        with open(csv_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([
+                display_time,                # The OCR time + ms string
+                landmarks[29].y * h,         # Left heel position in pixels
+                landmarks[30].y * h          # Right heel position in pixels
+            ])
 
 
-## Data Plottters
-def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
-                   domainToPlot:str="time", logX=False, logY=False, title="", save=""):
-    """
-    Plots the data in 2 axis (time or frequency domain)
 
-    Args:
-        dataBlockToPlot (Numpy): The data to be plotted [ch, timepoints]
+    # Show frame
+    frame = cv2.resize(frame, displayRez)
+    cv2.imshow("Input", frame)
 
-    Returns:
-        Null
-    """
-    numTimePts = dataBlockToPlot.shape[1]
-    if domainToPlot == "time":
-        xAxis_data = np.linspace(xAxisRange[0], xAxisRange[1], numTimePts) #start, stop, number of points
-        xAxis_str = f"Time"
-        xAxisUnits_str = "(s)"
+    key = cv2.waitKey(1)
+    if key == ord('q') & 0xFF:
+        break
 
-    if domainToPlot == "freq":
-        xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
-        xAxis_str = f"Frequency"
-        xAxisUnits_str = "(Hz)"
-    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}{title}, Acceleration (g)"
+frames = []
+left_heel = []
+right_heel = []
 
-    fig, axs = plt.subplots(len(plotChList)) #Make the subplots for how many ch you want
-    fig.suptitle(title_str)
+with open("heel_tracking_output.csv", newline='') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        frames.append(int(row["Frame"]))
+        left_heel.append(float(row["LeftHeel_Y"]))
+        right_heel.append(float(row["RightHeel_Y"]))
+yl_conv = (f"{(landmarks[29].y):.0f}")
+yr_conv = (f"{(landmarks[30].y):.0f}")
 
-    # Make room for the title, axis lables, and squish the plots up against eachother
-    fig.subplots_adjust(top = 0.95, bottom = 0.1, hspace=0, left = 0.1, right=0.99) # Mess with the padding (in percent)
+left_heel_dist = [find_dist_from_y(yl * h) for yl in left_heel]
+right_heel_dist = [find_dist_from_y(yr * h) for yr in right_heel]
 
-    for i, thisCh in enumerate(plotChList):  # Enumerate will turbo charge the forloop, give the value and the idex
-        # Plot the ch data
-        timeD_data = dataBlockToPlot[i,:]  #Note: Numpy will alow negitive indexing (-1 = the last row)
-        if domainToPlot == "time":
-            yAxis_data = timeD_data
-        if domainToPlot == "freq":
-            # Calculate the fft
-            # Apply a hanning window to minimize spectral leakage
-            window = np.hanning(len(timeD_data))
-            timeD_data = timeD_data - np.mean(timeD_data)  # Center the signal before FFT
-            timeD_data_windowed = window*timeD_data
-            timeD_data_windowed /= np.sum(window) / len(window)  # Normalize
-            freqD_data = np.fft.rfft(timeD_data_windowed) # Real value fft returns only below the nyquist
-                                                          # The data is returned as a complex value
-            freqD_mag = np.abs(freqD_data)                  # Will only plot the magnitude
-            yAxis_data = freqD_mag
+N = 10  # Show every 10th label
+plt.figure(figsize=(10, 5))
+plt.plot(display_times, left_heel_dist, label="Left Heel Distance", color='blue')
+plt.plot(display_times, right_heel_dist, label="Right Heel Distance", color='green')
+plt.xlabel("OCR Time + ms")
+plt.ylabel("Heel Distance (m)")
+plt.title("Heel Distance Over Time")
+plt.legend()
+plt.tight_layout()
 
-        print(f"Ch {thisCh} Min: {np.min(yAxis_data)}, Max: {np.max(yAxis_data)}, Mean: {np.mean(yAxis_data)}")
-        axs[i].plot(xAxis_data, yAxis_data)
-    
-        # Set the Axis limits and scale
-        axs[i].set_xlim(xAxisRange) 
-        axs[i].set_ylim(yAxisRange)
-        if logX: axs[i].set_xscale('log')  # Set log scale
-        if logY: axs[i].set_yscale('log')  # Set log scale
+# Set x-ticks to every Nth label
+plt.xticks(ticks=range(0, len(display_times), N), labels=[display_times[i] for i in range(0, len(display_times), N)], rotation=45)
 
-        # Label the axis
-        axs[i].set_ylabel(f'Ch {plotChList[i]}', fontsize=8)
-        if i < len(plotChList) - 1:
-            axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
+plt.show()
 
-    #Only show the x-axis on the last plot
-    axs[-1].get_xaxis().set_visible(True)
-    axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
-
-    #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
-    #plt.close()
-    return xAxis_data # Save for later use
-
-#### Do the stuff
-# Load the data 
-# Get the peramiters once
-dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile) 
-#print(triggerTime[0].strftime("%Y-%m-%d %H:%M:%S.%f"))
-#exit()
-
-trialList = [0, 1, 2 ]
-#for trial in range(20): # Cycle through the trials
-for i, trial in enumerate(trialList): # Cycle through the trials
-
-    print(f"Running Trial: {trial}")
-    dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)
-    #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
-    print(f"Trigger Time: {triggerTimes.strftime("%Y-%m-%d %H:%M:%S.%f")}")
-    print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
-    # Get the parts of the data we are interested in:
-    print(f"Data len pre-cut: {dataBlock_numpy.shape}")
-    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
-    #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
-    print(f"Data len: {dataBlock_sliced.shape}")
-
-    # Plot the data in the time domain
-    timeYRange = 0.01
-    #timeYRange = np.max(np.abs(dataBlock_sliced))
-    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
-    plt.show() # Open the plot(s)
+videoObject.release()
+cv2.destroyAllWindows()

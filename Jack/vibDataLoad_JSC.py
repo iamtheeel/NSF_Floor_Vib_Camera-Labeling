@@ -1,21 +1,30 @@
 ###
 # main.py
 # Joshua Mehlman
-# MIc Lab
+# MIC Lab
 # Spring, 2025
 ###
-# Minimum case DataLoad, time domain
+# Minimum Case DataLoad, time domain
 ###
 
 ### Settings
-dataTimeRange_s = [25, 0] # [0 0] for full dataset
+dataTimeRange_s = [0,0] # [0 0] for full dataset
+dataFreqRange_hz = [0,0] # will want this later
 
-dataFile = r"c:\Users\notyo\Documents\STARS\StudentData\25_06_03\Subject_2\Jack_3.hdf5"
+#dir = 'StudentData/25_06_03/Subject_1'
+#dataFile = "data/Yoko_s3_3.hdf5"
+#dataFile = "Kera_2.hdf5"
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_18'
+dataFile = "Yoko_s3_Run1.hdf5"
+
+dirFile = f"{dir}/{dataFile}"
 
 # What data are we interested in
-chToPlot = [1, 16, 2, 3, 4, 5, 6, 7 ,10]
+chToPlot = [1, 2, 3, 4, 5, 6, 7, 10]
 
 # Libraries needed
+from datetime import datetime
+from datetime import timedelta
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
@@ -26,13 +35,52 @@ import numpy as np                      # cool datatype, fun matix stuff and lot
 ###
 
 ## Data Loaders
-def print_attrs(name, obj): #From chatbot
+def print_attrs(name, obj): #From Chatbot
         print(f"\n📂 Path: {name}")
         for key, val in obj.attrs.items():
             print(f"  🔧 Attribute - {key}: {val}")
         if isinstance(obj, h5py.Dataset):
             print(f"  📊 Dataset - Shape: {obj.shape}, Dtype: {obj.dtype}")
 
+def get_peram(perams, peramName:str, asStr=False):
+    if asStr:
+        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
+    else:
+        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
+    units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
+    print(f"{peramName}: {peram_value} {units_value}")
+
+    return peram_value, units_value
+
+def get_perams(perams, peramName:str, asType='dateTime'):
+    values = [
+        #row['value'].decode()
+        datetime.fromtimestamp(float(row['value'].decode()))
+        for row in perams
+            if row['parameter'] == peramName.encode()
+    ]
+
+    return values 
+def loadPeramiters(dataFile):
+    with h5py.File(dataFile, 'r') as h5file:
+        filePerams = h5file['experiment/general_parameters'][:]
+
+    #Extract the data capture info from the file
+    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
+    recordLen_s, _ = get_peram(filePerams, 'record_length')
+    preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
+
+    print(filePerams.dtype.names)   # Show the peramiter field names
+    print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
+
+    # Now that we know which is the timepoints
+    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
+
+    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
+    if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
+
+
+    return dataCapRate_hz, recordLen_s, preTrigger_s 
 
 def loadData(dataFile, trial=-1):
     """
@@ -43,35 +91,35 @@ def loadData(dataFile, trial=-1):
 
     Returns:
         numpy: data 
-        int: Data capture Rate
+        int: Data Capture Rate
 
     """
     print(f"Loading file: {dataFile}")
 
     with h5py.File(dataFile, 'r') as h5file:
-        if trial == 0:
-            h5file.visititems(print_attrs)
+        #if trial == 0: h5file.visititems(print_attrs)
 
-        filePerams = h5file['experiment/general_parameters'][:]
+        #filePerams = h5file['experiment/general_parameters'][:]
         if trial >= 0:
-            #print(f"Loading trial: {trial}")
             dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
+            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
+            triggerTimes, _ = get_peram(runPerams, 'triggerTime', asStr=False)
+            triggerTimes = next(
+                                row['value'] for row in runPerams
+                                if row['parameter'] == b'triggerTime' and row['id'] == trial
+                                ).decode() #Get from string
+            triggerTimes = datetime.fromtimestamp(float(triggerTimes))
+            print(f"Loaded trial: {trial}")
         elif trial == -1: # Load the whole thing
-            print(f"Loading the full dataset")
             dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
+            runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
+            triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
         # Otherwize, we are just after the peramiters
+    # Done getting the file link
 
-    #Extract the data capture rate from the file
-    # Data cap rate is the first entery (number 0)
-    datacapRate_hz =filePerams[0]['value']  # Some files needs decode, others can't have it
-    #datacapRate_hz =int(filePerams[0]['value'].decode('utf-8'))  # Some files needs decode, others can't have it
-
-    datacapUnits = filePerams[0]['units'].decode('utf-8')
     if trial <=0:
-        print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
-        print(filePerams.dtype.names)   # Show the peramiter field names
-        print(f"Data cap Rate ({filePerams[0]['parameter'].decode('utf-8')}): {datacapRate_hz} {datacapUnits}")
-    
+        #print(filePerams.dtype.names)   # Show the peramiter field names
+        #print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
         # Look at the shape of the data
         print(f"Data type: {type(dataFromFile)}, shape: {dataFromFile.shape}")
 
@@ -88,19 +136,20 @@ def loadData(dataFile, trial=-1):
         if trial == 0:
             print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
 
-    if trial <=0:
-        # Now that we know which is the timepoints
-        timeLen_s   = (numTimePts-1)/datacapRate_hz # How far apart is each time point
-        if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
-        #if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = datacapRate_hz/2
-        print(f"The data was taken at {datacapRate_hz} {datacapUnits}, and is {timeLen_s} seconds long")
+    #if dataTimeRange_s[1] == 0: #If 0, set to length of data
+    #    timeLen_s   = (numTimePts)/dataCapRate_hz # How far apart is each time point
+    #    dataTimeRange_s[1] = timeLen_s
+    #    print(f"dataTimeRange: {dataTimeRange_s}")
 
-    return dataFromFile, datacapRate_hz
+    return dataFromFile, triggerTimes
+
+def sec_to_hms(sec):
+    return str(timedelta(seconds=int(sec)))
 
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
-    cuts the data by:
+    Cuts the data by:
         ch
     
     Args:
@@ -112,12 +161,13 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
 
     # The ch list
-    chList_zeroIndexed = [ch - 1 for ch in chList]  # convert to 0-based indexing
-    print(f"chList index: {chList_zeroIndexed}")
+    chList_zeroIndexed = [ch - 1 for ch in chList]  # Convert to 0-based indexing
+    print(f"ChList index: {chList_zeroIndexed}")
 
     # The time range
-    dataPoint_from = int(timeRange_sec[0]*datacapRate_hz)
-    dataPoint_to = int(timeRange_sec[1]*datacapRate_hz)
+    dataPoint_from = int(timeRange_sec[0]*dataCapRate_hz)
+    dataPoint_to = int(timeRange_sec[1]*dataCapRate_hz)
+    print(f"Data Point Range: {dataPoint_from}:{dataPoint_to} at {dataCapRate_hz} hz")
 
     # Ruturn the cut up data
     if trial > 0:
@@ -127,7 +177,7 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
 
 
 ## Data Plottters
-def dataPlot_2Axis(dataBlockToPlot:np, plotchList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
+def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
                    domainToPlot:str="time", logX=False, logY=False, title="", save=""):
     """
     Plots the data in 2 axis (time or frequency domain)
@@ -140,32 +190,33 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotchList, trial:int, xAxisRange, yAxisR
     """
     numTimePts = dataBlockToPlot.shape[1]
     if domainToPlot == "time":
-        xAxis_data = np.linspace(xAxisRange[0], xAxisRange[1], numTimePts) #start, stop, number of points
-        xAxis_str = f"Time"
-        xAxisUnits_str = "(s)"
+        start_time_sec = (triggerTimes - triggerTimes.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+        xAxis_data = start_time_sec + np.arange(numTimePts) / dataCapRate_hz
+        xAxis_str = f"Clock Time"
+        xAxisUnits_str = "(s since midnight)"
 
     if domainToPlot == "freq":
         xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
         xAxis_str = f"Frequency"
         xAxisUnits_str = "(Hz)"
-    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotchList}{title}, Aceleration (g)"
+    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}{title}, Acceleration (g)"
 
-    fig, axs = plt.subplots(len(plotchList)) #Make the subplots for how many ch you want
+    fig, axs = plt.subplots(len(plotChList)) #Make the subplots for how many ch you want
     fig.suptitle(title_str)
 
     # Make room for the title, axis lables, and squish the plots up against eachother
     fig.subplots_adjust(top = 0.95, bottom = 0.1, hspace=0, left = 0.1, right=0.99) # Mess with the padding (in percent)
 
-    for i, thisch in enumerate(plotchList):  # Enumerate will turbo charge the forloop, give the value and the idex
+    for i, thisCh in enumerate(plotChList):  # Enumerate will turbo charge the forloop, give the value and the idex
         # Plot the ch data
         timeD_data = dataBlockToPlot[i,:]  #Note: Numpy will alow negitive indexing (-1 = the last row)
         if domainToPlot == "time":
             yAxis_data = timeD_data
         if domainToPlot == "freq":
-            # calculate the fft
+            # Calculate the fft
             # Apply a hanning window to minimize spectral leakage
             window = np.hanning(len(timeD_data))
-            timeD_data = timeD_data - np.mean(timeD_data)  # center the signal before FFT
+            timeD_data = timeD_data - np.mean(timeD_data)  # Center the signal before FFT
             timeD_data_windowed = window*timeD_data
             timeD_data_windowed /= np.sum(window) / len(window)  # Normalize
             freqD_data = np.fft.rfft(timeD_data_windowed) # Real value fft returns only below the nyquist
@@ -173,23 +224,26 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotchList, trial:int, xAxisRange, yAxisR
             freqD_mag = np.abs(freqD_data)                  # Will only plot the magnitude
             yAxis_data = freqD_mag
 
-        print(f"ch {thisch} Min: {np.min(yAxis_data)}, Max: {np.max(yAxis_data)}, Mean: {np.mean(yAxis_data)}")
+        print(f"Ch {thisCh} Min: {np.min(yAxis_data)}, Max: {np.max(yAxis_data)}, Mean: {np.mean(yAxis_data)}")
         axs[i].plot(xAxis_data, yAxis_data)
     
         # Set the Axis limits and scale
-        axs[i].set_xlim(xAxisRange) 
+        #axs[i].set_xlim(xAxisRange) 
+        axs[i].set_xlim([xAxis_data[0], xAxis_data[-1]])
         axs[i].set_ylim(yAxisRange)
         if logX: axs[i].set_xscale('log')  # Set log scale
         if logY: axs[i].set_yscale('log')  # Set log scale
 
         # Label the axis
-        axs[i].set_ylabel(f'ch {plotchList[i]}', fontsize=8)
-        if i < len(plotchList) - 1:
+        axs[i].set_ylabel(f'Ch {plotChList[i]}', fontsize=8)
+        if i < len(plotChList) - 1:
             axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
 
     #Only show the x-axis on the last plot
     axs[-1].get_xaxis().set_visible(True)
-    axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
+    axs[-1].set_xlabel("Time (s)")
+    axs[-1].set_xticks(np.linspace(xAxis_data[0], xAxis_data[-1], 10))
+    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)
 
     #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
     #plt.close()
@@ -197,38 +251,29 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotchList, trial:int, xAxisRange, yAxisR
 
 #### Do the stuff
 # Load the data 
-dummyData, datacapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
+# Get the peramiters once
+dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile) 
+#print(triggerTime[0].strftime("%Y-%m-%d %H:%M:%S.%f"))
+#exit()
 
-#trialList = [0, 1, 2, 7]
-trialList = [0]
-#for trial in range(20): # cycle through the trials
-for i, trial in enumerate(trialList): # cycle through the trials
+trialList = [7, 9, 10, 11]
+#for trial in range(20): # Cycle through the trials
+for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, datacapRate_hz = loadData(dataFile=dataFile, trial=trial)
-    #ch = 3 # change this number to look at a specific sensor channel
-    #channel_data = dataBlock_numpy[ch-1, :]
-    #print(f"channel {ch} data: Min: {np.min(channel_data)}, Max: {np.max(channel_data)}, Mean: {np.mean(channel_data)} Std: {np.std(channel_data)}")
-    
-
+    dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    print(f"Trigger Time: {triggerTimes.strftime("%Y-%m-%d %H:%M:%S.%f")}")
+    print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
     dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
     #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
     print(f"Data len: {dataBlock_sliced.shape}")
-    print(f"Data Type:, {type(dataBlock_numpy)}")
-    # Get stats for the first channel (index 0)
-  
+
     # Plot the data in the time domain
     timeYRange = 0.01
     #timeYRange = np.max(np.abs(dataBlock_sliced))
-    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotchList=chToPlot, trial=trial, 
+    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
-
-    ch = 7  # The specific channel you want
-    if ch in chToPlot:
-        index = chToPlot.index(ch)
-        channel_data_sliced = dataBlock_sliced[index, :]
-        print(f"Channel {ch} data: Min: {np.min(channel_data_sliced)}, Max: {np.max(channel_data_sliced)}, Mean: {np.mean(channel_data_sliced)}, Std: {np.std(channel_data_sliced)}")
-    else: print("This channel is not in plot")
     plt.show() # Open the plot(s)

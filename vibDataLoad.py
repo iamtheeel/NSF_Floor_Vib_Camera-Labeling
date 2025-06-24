@@ -14,8 +14,10 @@ dataFreqRange_hz = [0,0] # will want this later
 #dir = 'StudentData/25_06_03/Subject_1'
 #dataFile = "data/Yoko_s3_3.hdf5"
 #dataFile = "Kera_2.hdf5"
-dir = 'StudentData/25_06_13/'
-dataFile = "triggerTime_1.hdf5"
+#dir = 'StudentData/25_06_13/'
+#dataFile = "triggerTime_1.hdf5"
+dir = 'StudentData/25_06_18/'
+dataFile = "Yoko_s3_Run1.hdf5"
 
 dirFile = f"{dir}/{dataFile}"
 
@@ -58,10 +60,15 @@ def get_perams(perams, peramName:str, asType='dateTime'):
         for row in perams
             if row['parameter'] == peramName.encode()
     ]
-
     return values 
+
 def loadPeramiters(dataFile):
     with h5py.File(dataFile, 'r') as h5file:
+        #h5file.visititems(print_attrs)
+        # Move this to a saved peramiter
+        nTrials = h5file['experiment/data'][:].shape[0] #Load all the rows of data to the block, will not work without the [:]
+
+
         filePerams = h5file['experiment/general_parameters'][:]
 
     #Extract the data capture info from the file
@@ -72,14 +79,11 @@ def loadPeramiters(dataFile):
     print(filePerams.dtype.names)   # Show the peramiter field names
     print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
 
-    # Now that we know which is the timepoints
-    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
-
     if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
 
 
-    return dataCapRate_hz, recordLen_s, preTrigger_s 
+    return dataCapRate_hz, recordLen_s, preTrigger_s, nTrials
 
 def loadData(dataFile, trial=-1):
     """
@@ -96,9 +100,7 @@ def loadData(dataFile, trial=-1):
     print(f"Loading file: {dataFile}")
 
     with h5py.File(dataFile, 'r') as h5file:
-        #if trial == 0: h5file.visititems(print_attrs)
 
-        #filePerams = h5file['experiment/general_parameters'][:]
         if trial >= 0:
             dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
             runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
@@ -114,7 +116,6 @@ def loadData(dataFile, trial=-1):
             runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
             triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
         # Otherwize, we are just after the peramiters
-    # Done getting the file link
 
     if trial <=0:
         #print(filePerams.dtype.names)   # Show the peramiter field names
@@ -134,11 +135,6 @@ def loadData(dataFile, trial=-1):
         numTimePts = dataFromFile.shape[1]
         if trial == 0:
             print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
-
-    #if dataTimeRange_s[1] == 0: #If 0, set to length of data
-    #    timeLen_s   = (numTimePts)/dataCapRate_hz # How far apart is each time point
-    #    dataTimeRange_s[1] = timeLen_s
-    #    print(f"dataTimeRange: {dataTimeRange_s}")
 
     return dataFromFile, triggerTimes
 
@@ -243,19 +239,18 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
 #### Do the stuff
 # Load the data 
-# Get the peramiters once
-dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile) 
-#print(triggerTime[0].strftime("%Y-%m-%d %H:%M:%S.%f"))
-#exit()
+dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
+print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
-trialList = [0, 1, 2 ]
-#for trial in range(20): # Cycle through the trials
-for i, trial in enumerate(trialList): # Cycle through the trials
+#trialList = [0, 1, 2, 7]
+trialList = [0]
+for trial in range(nTrials): # Cycle through the trials
+#for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
     #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
-    print(f"Trigger Time: {triggerTimes.strftime("%Y-%m-%d %H:%M:%S.%f")}")
+    print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
@@ -264,8 +259,8 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     print(f"Data len: {dataBlock_sliced.shape}")
 
     # Plot the data in the time domain
-    timeYRange = 0.01
-    #timeYRange = np.max(np.abs(dataBlock_sliced))
+    #timeYRange = 0.01
+    timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
     plt.show() # Open the plot(s)

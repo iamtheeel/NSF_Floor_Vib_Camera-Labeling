@@ -26,16 +26,24 @@ from mediapipe.tasks.python import vision   # installs with mediapipe
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
 #model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_lite.task' # 5.5 MiB
-#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
-model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
+model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_full.task' # 9.0 MiB
+#model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmarker_heavy.task' # 29.2 MiB
 
 #Video File
-dir = 'StudentData/25_06_03/Subject_2'
-file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+#dir = 'StudentData/25_06_03/Subject_2'
+#file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
 #dir = 'StudentData/25_06_09'  
 #file = 'B8A44FC4B25F_6-9-2025_11-54-27 AM.asf' #H.264, GOP = 150
 #file  ='B8A44FC4B25F_6-9-2025_12-13-11 PM.a' #H.264, GOP = 1
 #file = 'output_allkey.mp4'
+dir = 'StudentData/25_06_11'  
+#file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
+#file = 'subject_2_test_2_6-11-2025_5-43-01 PM.asf'
+#file = 'subject_2_test_3_6-11-2025_5-46-23 PM.asf'
+#file = 'subject_2_test_4_6-11-2025_5-49-00 PM.asf'
+#file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
+file = 'subject_2_test_6_6-11-2025_5-57-19 PM.asf'
+
 fileName = f"{dir}/{file}"
 
 ## Open our video File
@@ -133,19 +141,20 @@ for i in range(clipRunFrames): # Go through each frame this many times
         #print(f"stride length: {strideLen:.3f}m, {strideLen*3.28084:.3f} ft")
 
         # Use normalized landmarks for pixel calculations
-    landmarks_px = pose_landmarker_result.pose_landmarks[0]
-    x1 = landmarks_px[29].x * w
-    y1 = landmarks_px[29].y * h
-    x2 = landmarks_px[30].x * w
-    y2 = landmarks_px[30].y * h
+        landmarks_px = pose_landmarker_result.pose_landmarks[0]
+        x1 = landmarks_px[29].x * w
+        y1 = landmarks_px[29].y * h
+        x2 = landmarks_px[30].x * w
+        y2 = landmarks_px[30].y * h
 
-    stride_px = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-    print(f"👣 Stride (pixel distance): {stride_px:.1f} px")
+        stride_px = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+        print(f"👣 Stride (pixel distance): {stride_px:.1f} px")
 
-
+    '''
     if pose_landmarker_result.segmentation_masks is not None:
         mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
         cv2.imshow("Seg mask", mask)
+    '''
 
     #Show the frame 
     #draw circle, or line, or rectange.

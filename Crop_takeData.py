@@ -172,7 +172,6 @@ def crop_with_padding(frame, landmarks):
     center_width = min_width + tot_width / 2 
     center_height = min_height + tot_height / 2
     
-    
     #Change height/width ratio of cropped frame to match that of full frame
     if current_ratio < Ratio:
     # Too narrow: increase width (or crop height)
@@ -186,7 +185,6 @@ def crop_with_padding(frame, landmarks):
         min_height = center_height - adjust_height
         max_height = center_height + adjust_height
         #print(f"Height adjusted. Min height {min_height}. Max height {max_height}")
-    
     #adjusts total width/height according to new dimensions
     tot_width = max_width - min_width
     tot_height = max_height - min_height
@@ -223,8 +221,8 @@ def crop_with_padding(frame, landmarks):
 
 
 # Main code
-start_frame = 1500 # Start frame for the clip
-end_frame = 2100 #int(fCount) 
+start_frame = 0 # Start frame for the clip
+end_frame = int(fCount) 
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
 # Read frames until we reach the frame prior to start frame
@@ -237,12 +235,13 @@ max_width = width
 min_width = 0
 
 # === CSV SETUP (✅ correct position: outside loop) ===
-csv_path = r"E:\STARS\testforvisible.csv"
+csv_path = r"E:\STARS\myfile2.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([
-        "Frame", 
-        "Right heel Visibility"
+        "Frame", "Timestamp_ms",
+        "LeftHeel_Y", "RightHeel_Y",
+        "LeftHeel_Distance", "RightHeel_Distance"
     ])
 #Opens 
 
@@ -281,8 +280,7 @@ for frame_Index in range(start_frame, end_frame):
         #print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
         #new_Frame = crop_with_padding(raw_frame, landmarks) #Returns cropped frame
         #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
-            visibility = landmarks[30].visibility
-            
+        
         # === Heel Y values (normalized and pixel)
             left_heel_y_norm = landmarks[29].y
             right_heel_y_norm = landmarks[30].y
@@ -291,14 +289,18 @@ for frame_Index in range(start_frame, end_frame):
             # === Distances using your function
             left_dist = find_dist_from_y(left_heel_y_px, debug=True)
             right_dist = find_dist_from_y(right_heel_y_px, debug=True)
-
+        
     # === Save to CSV (✅ append only)
     # === Save to CSV (✅ append only)
             with open(csv_path, mode='a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([
                 frame_Index,
-                visibility
+                adjusted_time_ms,
+                left_heel_y_norm,
+                right_heel_y_norm,
+                left_dist,
+                right_dist
                 ])
     else:
         #f.write(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}")
