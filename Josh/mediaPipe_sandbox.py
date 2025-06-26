@@ -36,13 +36,15 @@ model_path = '/home/josh/Documents/MIC/shake/STARS/media-pipeModels/pose_landmar
 #file = 'B8A44FC4B25F_6-9-2025_11-54-27 AM.asf' #H.264, GOP = 150
 #file  ='B8A44FC4B25F_6-9-2025_12-13-11 PM.a' #H.264, GOP = 1
 #file = 'output_allkey.mp4'
-dir = 'StudentData/25_06_11'  
+#dir = 'StudentData/25_06_11'  
 #file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
 #file = 'subject_2_test_2_6-11-2025_5-43-01 PM.asf'
 #file = 'subject_2_test_3_6-11-2025_5-46-23 PM.asf'
 #file = 'subject_2_test_4_6-11-2025_5-49-00 PM.asf'
 #file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
-file = 'subject_2_test_6_6-11-2025_5-57-19 PM.asf'
+#file = 'subject_2_test_6_6-11-2025_5-57-19 PM.asf'
+dir = 'StudentData/25_06_18'  
+file = 'Subject_1/Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
 
 fileName = f"{dir}/{file}"
 
@@ -101,7 +103,7 @@ def drawLandmark(frame, landmark, color):
 
 #exit()
 clipRunTime_s = 0
-clipStartTime_s = 30
+clipStartTime_s = 55
 clipEndTime_s = clipStartTime_s + clipRunTime_s
 clipStartFrame = clipStartTime_s*fps
 if clipRunTime_s == 0:
@@ -124,7 +126,8 @@ for i in range(clipRunFrames): # Go through each frame this many times
         print(f"Frame read failure")
         exit()
 
-    getDateTime(frame) #Read the date and time from the upper left of the frame
+    #getDateTime(frame) #Read the date and time from the upper left of the frame
+    #frame = frame[00*dispFact:750*dispFact, 500*dispFact:1000*dispFact].copy()
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
     if len(pose_landmarker_result.pose_landmarks)  > 0:
@@ -147,8 +150,8 @@ for i in range(clipRunFrames): # Go through each frame this many times
         x2 = landmarks_px[30].x * w
         y2 = landmarks_px[30].y * h
 
-        stride_px = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-        print(f"👣 Stride (pixel distance): {stride_px:.1f} px")
+        #stride_px = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+        #print(f"👣 Stride (pixel distance): {stride_px:.1f} px")
 
     '''
     if pose_landmarker_result.segmentation_masks is not None:
