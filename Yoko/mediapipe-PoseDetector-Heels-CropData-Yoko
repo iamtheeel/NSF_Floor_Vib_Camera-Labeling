@@ -28,11 +28,33 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from distance_position import find_dist_from_y  # ✅ Import your custom function
 
 # === MODEL PATH ===
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
 
 # === VIDEO FILE ===
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
+#video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#fileName = f"{video_dir}/{video_file}"
 video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_2'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_3'
 video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#video_file = 'Sub_1_Run_2__6-18-2025_11-47-57 AM.asf'
+#video_file = 'Sub_1_Run_3__6-18-2025_11-49-29 AM.asf'
+#video_file = 'Sub_1_Run_4__6-18-2025_11-50-26 AM.asf'
+#video_file = 'sub_2_run_1_6-18-2025_11-36-03 AM.asf'
+#video_file = 'sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf'
+#video_file = 'sub_2_run_3_pt_2_6-18-2025_11-39-54 AM.asf' #####ISSUE WITH FRAME READ#####
+#video_file = 'sub_2_run_4_6-18-2025_11-41-35 AM.asf'
+#video_file = 'sub_2_run_5_6-18-2025_11-42-48 AM.asf'
+#video_file = 'sub_3_run_4_F_6-18-2025_11-26-08 AM.asf'
+#video_file = 'sub3_run5_6-18-2025_11-28-28 AM.asf'
+#video_file = 'Sub3_run6_6-18-2025_11-32-05 AM.asf'
+#video_file = 'Sub3_run7_6-18-2025_11-34-22 AM.asf'
+
 fileName = f"{video_dir}/{video_file}"
 
 # === Open video ===
@@ -224,7 +246,9 @@ with open(csv_path, mode='w', newline='') as file:
     writer.writerow([
         "Frame", "Timestamp_ms",
         "LeftHeel_Y", "RightHeel_Y",
-        "LeftHeel_Distance", "RightHeel_Distance"
+        "LeftHeel_Distance", "RightHeel_Distance",
+        "LeftHeel_Visibility", "RightHeel_Visibility",
+        "LeftHeel_Presence", "RightHeel_Presence"
     ])
 
 # === Frame Timing ===
@@ -250,7 +274,7 @@ for i in range(clipRunFrames):
         landmarks = pose_landmarker_result.pose_landmarks[0]
         landmarks_w = pose_landmarker_result.pose_world_landmarks[0]
 
-#Change the code for fitting the crop
+        #Change the code for fitting the crop
         #min_width, max_width, min_height, max_height = crop_to_ratio(frame, landmarks) 
         min_width, max_width, min_height, max_height = crop_to_square(frame, landmarks)
 
@@ -260,16 +284,20 @@ for i in range(clipRunFrames):
         drawLandmark_line(frame, landmarks[29], landmarks[23], (255, 0, 0))
         drawLandmark_line(frame, landmarks[30], landmarks[24], (0, 0, 255))
 
-        left_heel_y_norm = landmarks[29].y
-        right_heel_y_norm = landmarks[30].y
+        left_heel = landmarks[29]
+        right_heel = landmarks[30]
+
+        left_heel_y_norm = left_heel.y
+        right_heel_y_norm = right_heel.y
         left_heel_y_px = left_heel_y_norm * h
         right_heel_y_px = right_heel_y_norm * h
-    
-#Distance function
+
+        #Distance function
         left_dist = find_dist_from_y(left_heel_y_px, debug=True)
         right_dist = find_dist_from_y(right_heel_y_px, debug=True)
 
-        print(f"frametime: {frame_timestamp_ms:.0f} ms | Left heel Y: {left_heel_y_norm:.4f} → {left_dist:.4f} m | Right heel Y: {right_heel_y_norm:.4f} → {right_dist:.4f} m")
+        print(f"Left Heel - visibility: {left_heel.visibility:.4f}, presence: {left_heel.presence:.4f}")
+        print(f"Right Heel - visibility: {right_heel.visibility:.4f}, presence: {right_heel.presence:.4f}")
 
         with open(csv_path, mode='a', newline='') as file:
             writer = csv.writer(file)
@@ -279,7 +307,11 @@ for i in range(clipRunFrames):
                 left_heel_y_norm,
                 right_heel_y_norm,
                 left_dist,
-                right_dist
+                right_dist,
+                left_heel.visibility,
+                right_heel.visibility,
+                left_heel.presence,
+                right_heel.presence
             ])
 
     frame = cv2.resize(frame, displayRez)
@@ -289,4 +321,3 @@ for i in range(clipRunFrames):
 
 videoObject.release()
 cv2.destroyAllWindows()
-
