@@ -27,14 +27,32 @@ from distance_position import find_dist_from_y  # ✅ Import your custom functio
 
 # === MODEL PATH ===
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"  # Trial 2
-#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"  # Trial 1
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
 
 # === VIDEO FILE ===
-#video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
-#video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
-video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
-video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
+#video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#fileName = f"{video_dir}/{video_file}"
+video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_2'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_3'
+video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#video_file = 'Sub_1_Run_2__6-18-2025_11-47-57 AM.asf'
+#video_file = 'Sub_1_Run_3__6-18-2025_11-49-29 AM.asf'
+#video_file = 'Sub_1_Run_4__6-18-2025_11-50-26 AM.asf'
+#video_file = 'sub_2_run_1_6-18-2025_11-36-03 AM.asf'
+#video_file = 'sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf'
+#video_file = 'sub_2_run_3_pt_2_6-18-2025_11-39-54 AM.asf' #####ISSUE WITH FRAME READ#####
+#video_file = 'sub_2_run_4_6-18-2025_11-41-35 AM.asf'
+#video_file = 'sub_2_run_5_6-18-2025_11-42-48 AM.asf'
+#video_file = 'sub_3_run_4_F_6-18-2025_11-26-08 AM.asf'
+#video_file = 'sub3_run5_6-18-2025_11-28-28 AM.asf'
+#video_file = 'Sub3_run6_6-18-2025_11-32-05 AM.asf'
+#video_file = 'Sub3_run7_6-18-2025_11-34-22 AM.asf'
+
 fileName = f"{video_dir}/{video_file}"
 
 # === Open video ===
