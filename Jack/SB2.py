@@ -34,8 +34,8 @@ from OCR_Detect import timeWith_ms
 model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
 
 # === VIDEO FILE ===
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
-file = 'subject_2_test_5_6-11-2025_5-54-26 PM.asf'
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_18\subject_2'
+file = 'sub_2_run_4_6-18-2025_11-41-35 AM.asf'
 fileName = f"{dir}/{file}"  # Path to the video file
 print(fileName)
 
@@ -94,8 +94,8 @@ def calc_dist(p1, p2):
 frameTime_ms = 1000/30 #How long of a time does each frame cover, convert from seconds to milliseconds / a.k.a. frame rate 
 
 # === Clip Setup ===
-clipRunTime_s = 20
-clipStartTime_s = 10
+clipRunTime_s = 30
+clipStartTime_s = 5
 clipStartFrame = 0
 clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
 
@@ -114,10 +114,11 @@ display_times = []
 videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
 
 # === CSV SETUP ===
-csv_path = "heel_tracking_output.csv"
+csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\evil_heel_tracking.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["Frame", "Timestamp_ms", "LeftHeel_Y", "RightHeel_Y"])
+    writer.writerow(["Time", "LeftHeel_m", "RightHeel_m"])
+    print("Saving CSV to:", os.path.abspath(csv_path))
 
 timeRetrieval = timeWith_ms(frameTime_ms)
 
@@ -131,35 +132,10 @@ for i in range(clipRunFrames):
 
     current_time = getDateTime(frame)  # or getTime(frame) if you want just the time
 
-    timeOutput_ms_str = timeRetrieval.calc_ms(current_time, i)
+    timeOutput_ms_str = timeRetrieval.calc_ms(current_time, i, True)
 
     display_times.append(timeOutput_ms_str)    
 
-    #getDateTime got the time in seconds from the OCR
-    if prev_time is None:
-        prev_time = current_time
-
-    if current_time != prev_time:
-        if not first_rollover_detected:
-            first_rollover_detected = True
-            print(f"First OCR rollover at frame {i}, OCR time: {current_time}")
-
-        ms_since_last_rollover = 0
-        frames_since_rollover = 0
-        prev_time = current_time
-
-    frames_since_rollover += 1
-    ms_since_last_rollover = ((frames_since_rollover - 1) * frameTime_ms) % 1000
-
-    # After the first rollover, display the OCR time plus ms since last rollover
-    if first_rollover_detected:
-        # Format: OCR time + ms since last rollover
-        display_time = f"{prev_time}.{int(ms_since_last_rollover):03d}"
-        print(f"Vid time: {display_time}")
-        display_times.append(display_time)
-    else:
-        display_times.append("")
-    #now you have a time string with the ms at the end
 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
     pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
@@ -173,16 +149,19 @@ for i in range(clipRunFrames):
         
         print(f"Foot position | left heel: {(landmarks[29].y)*h:.0f}, right heel: {(landmarks[30].y)*h:.0f}")
 
+
+                
+        left_heel_dist_loop = find_dist_from_y(landmarks[29].y*h)
+        right_heel_dist_loop = find_dist_from_y(landmarks[30].y*h)
+
         # Save to CSV
         with open(csv_path, mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
-                i,
-                frame_timestamp_ms,
-                landmarks[29].y,
-                landmarks[30].y
+                timeOutput_ms_str,                # The OCR time + ms string
+                left_heel_dist_loop,        # Left heel position in pixels
+                right_heel_dist_loop          # Right heel position in pixels
             ])
-
 
 
     # Show frame
@@ -193,21 +172,23 @@ for i in range(clipRunFrames):
     if key == ord('q') & 0xFF:
         break
 
-frames = []
+#frames = []
+display_times = []
 left_heel = []
 right_heel = []
 
-with open("heel_tracking_output.csv", newline='') as csvfile:
-    reader = csv.DictReader(csvfile)
-    for row in reader:
-        frames.append(int(row["Frame"]))
-        left_heel.append(float(row["LeftHeel_Y"]))
-        right_heel.append(float(row["RightHeel_Y"]))
-yl_conv = (f"{(landmarks[29].y):.0f}")
-yr_conv = (f"{(landmarks[30].y):.0f}")
-
 left_heel_dist = [find_dist_from_y(yl * h) for yl in left_heel]
 right_heel_dist = [find_dist_from_y(yr * h) for yr in right_heel]
+
+
+with open(csv_path, newline='') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        display_times.append(row["Time"])
+        left_heel_dist.append(float(row["LeftHeel_m"]))
+        right_heel_dist.append(float(row["RightHeel_m"]))
+
+
 
 N = 10  # Show every 10th label
 plt.figure(figsize=(10, 5))
@@ -218,11 +199,13 @@ plt.ylabel("Heel Distance (m)")
 plt.title("Heel Distance Over Time")
 plt.legend()
 plt.tight_layout()
-
-# Set x-ticks to every Nth label
-plt.xticks(ticks=range(0, len(display_times), N), labels=[display_times[i] for i in range(0, len(display_times), N)], rotation=45)
-
+plt.xticks(
+    ticks=range(0, len(display_times), N),
+    labels=[display_times[i] for i in range(0, len(display_times), N)],
+    rotation=45
+)
 plt.show()
+
 
 videoObject.release()
 cv2.destroyAllWindows()

@@ -23,6 +23,7 @@ dirFile = f"{dir}/{dataFile}"
 chToPlot = [1, 2, 3, 4, 5, 6, 7, 10]
 
 # Libraries needed
+import csv
 from datetime import datetime
 from datetime import timedelta
 import h5py                             # For loading the data : pip install h5py
@@ -247,6 +248,22 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
     #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
     #plt.close()
+
+
+    csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack"
+    csv_filename = f"trial_{trial}_graph_output.csv"
+    csv_file = f"{csv_path}/{csv_filename}"
+    with open(csv_file, mode='w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        # Header: Time, Ch1, Ch2, ...
+        header = ["Time"] + [f"Ch{ch}" for ch in plotChList]
+        writer.writerow(header)
+        # Write data: each row is [time, ch1_val, ch2_val, ...]
+        for t_idx in range(len(xAxis_data)):
+            row = [xAxis_data[t_idx]]
+            for ch_idx in range(len(plotChList)):
+                row.append(dataBlockToPlot[ch_idx, t_idx])
+            writer.writerow(row)
     return xAxis_data # Save for later use
 
 #### Do the stuff
