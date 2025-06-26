@@ -384,14 +384,6 @@ for frame_Index in range(start_frame, end_frame):
                 min_height = 0
                 max_height = height
 
-    else:
-        #f.write(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}")
-        #f.write("\n")
-        min_height = 0
-        max_height = height
-        min_width = 0
-        max_width = width
-        
     resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
     cv2.imshow("Frame", resizedFrame) #displays frame
     key1 = cv2.waitKey(0) # Wait for a key press
