@@ -112,7 +112,7 @@ frameTime_ms = 1000 / fps  # Frame duration in milliseconds
 
 # === Clip Setup ===
 clipRunTime_s = 0
-clipStartTime_s = 40
+clipStartTime_s = 59
 clipStartFrame = 0
 clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
 videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
@@ -195,8 +195,9 @@ for i in range(clipRunFrames):
     cv2.imshow("Input", frame)
 
     key = cv2.waitKey(1)
-    if key == ord('q') & 0xFF:
+    if key == ord('q'):
         break
+
 
 videoObject.release()
 cv2.destroyAllWindows()
