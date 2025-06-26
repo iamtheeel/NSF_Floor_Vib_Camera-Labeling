@@ -125,9 +125,18 @@ def isPersonInFrame(frame, frameIndex):
 
 def crop_to_Southhall():
     min_height = 0
-    max_height = 254
+    max_height = 300
     adjust_width = (max_height - min_height) //2
-    center_width = width//2 +40
+    center_width = width//2 + 60
+    min_width = center_width - adjust_width
+    max_width = center_width + adjust_width
+    return round(min_width), round(max_width), round(min_height), round(max_height) 
+
+def crop_to_Northhall():
+    min_height = 0
+    max_height = height
+    adjust_width = (max_height - min_height) //2
+    center_width = width//2
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
     return round(min_width), round(max_width), round(min_height), round(max_height) 
@@ -293,8 +302,8 @@ def crop_to_square(frame, landmarks):
 
 
 # Main code
-start_frame = 300 # Start frame for the clip
-end_frame = int(fCount) 
+start_frame = 0 # Start frame for the clip
+end_frame = 990 
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
 # Read frames until we reach the frame prior to start frame
@@ -307,13 +316,13 @@ max_width = width
 min_width = 0
 
 # === CSV SETUP (✅ correct position: outside loop) ===
-csv_path = r"E:\STARS\myfile2.csv"
+csv_path = r"E:\STARS\fullframewithsquareSN.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([
-        "Frame", "Timestamp_ms",
-        "LeftHeel_Y", "RightHeel_Y",
-        "LeftHeel_Distance", "RightHeel_Distance"
+        "Frame", "LeftHeel_Visibility",
+        "RightHeel_Visibility", "LeftHeel_Presence",
+        "RightHeel_Presence"
     ])
 #Opens 
 
@@ -323,8 +332,9 @@ for frame_Index in range(start_frame, end_frame):
     if not success: # If the frame was not read successfully, break the loop
         print("Failed to read frame")
         exit()
-    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and 
-    cv2.imshow("Frame to send model", newDim_Frame) #displays frame
+    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and
+    resizedCropFrame = cv2.resize(newDim_Frame, displayRez) # Resize the frame for displayd 
+    cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
     #Shrinking it down to dimensions
     #Changes dimensions before finding landmarks
     drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
@@ -332,28 +342,52 @@ for frame_Index in range(start_frame, end_frame):
     #good, result = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person in the frame. Returns frame and landmarkers.
     #rescale and reshift
         good = False
-        good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
+        good, result, adjusted_time_ms = isPersonInFrame(raw_frame, frame_Index) #newDim_Frame Checks if there is a person
         #result is the landmarks
         if good and result is not None:
             landmarks = result.pose_landmarks[0]
             drawLandmark_circle(raw_frame, landmarks[29], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [255,0,0]) # Draw green landmarks before transition
             drawLandmark_circle(raw_frame, landmarks[30], [255,0,0]) # Draw green landmarks before transition
             for i in range(len(landmarks)):   
                 landmarks[i].x = (landmarks[i].x * (max_width - min_width) + min_width) / width
                 landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / height
             drawLandmark_circle(raw_frame, landmarks[29], [0,255,0]) # Draw blue landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [0,255,0]) # Draw blue landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [0,255,0]) # Draw blue landmarks after transition
             drawLandmark_circle(raw_frame, landmarks[30], [0,255,0]) # Draw blue landmarks after transition
             min_width, max_width, min_height, max_height = crop_to_square(raw_frame, landmarks) #, landmarks
             #min_width, max_width, min_height, max_height = crop_with_padding(raw_frame, landmarks) #, landmarks
+            right_heel_visibility = landmarks[30].visibility
+            left_heel_visibility = landmarks[29].visibility
+            right_heel_presence = landmarks[30].presence
+            left_heel_presence = landmarks[29].presence
         else:
             min_width, max_width, min_height, max_height = crop_to_Southhall() #, landmarks
+            #if frame_Index % 2 ==0:
+                #min_width, max_width, min_height, max_height = crop_to_Southhall() #, landmarks
+            #else:
+                #min_width, max_width, min_height, max_height = crop_to_Northhall() #, landmarks
 
-    #resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-    cv2.imshow("Frame", raw_frame) #displays frame
-    key1 = cv2.waitKey(1) # Wait for a key press
+            right_heel_visibility = 0
+            left_heel_visibility = 0
+            right_heel_presence = 0
+            left_heel_presence = 0
+    # === Save to CSV (✅ append only)
+    # === Save to CSV (✅ append only)
+    with open(csv_path, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([
+        frame_Index,
+        left_heel_visibility,
+        right_heel_visibility,
+        left_heel_presence,
+        right_heel_presence
+        ])
+
+    resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+    cv2.imshow("Frame", resizedFrame) #displays frame
+    key1 = cv2.waitKey(0) # Wait for a key press
     key2 = 0
     if key1 == ord('q') or key2 == ord('q') & 0xFF: exit()
