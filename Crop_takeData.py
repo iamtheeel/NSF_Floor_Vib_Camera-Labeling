@@ -309,6 +309,7 @@ for frame_Index in range(start_frame, end_frame):
         max_height = height
         min_width = 0
         max_width = width
+        
     resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
     cv2.imshow("Frame", resizedFrame) #displays frame
     key1 = cv2.waitKey(0) # Wait for a key press
