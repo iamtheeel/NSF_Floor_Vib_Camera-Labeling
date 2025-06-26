@@ -237,6 +237,24 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     #plt.close()
     return xAxis_data # Save for later use
 
+
+def downSampleData(self, data, downSample):
+    from scipy.signal import decimate
+
+    #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
+    #logger.info(f"Before downsample shape: {np.shape(data)} ")
+    nTrials, nCh, timePoints = data.shape
+    downSampled_data = np.empty((nTrials, nCh, timePoints // downSample))  
+    for trial in range(nTrials):
+        for ch in range(nCh):
+            downSampled_data[trial, ch] = decimate(data[trial, ch], 
+                                                   downSample, 
+                                                   ftype='iir', 
+                                                   zero_phase=True)
+
+    return downSampled_data, dataCapRate_hz/downSample
+
+
 #### Do the stuff
 # Load the data 
 dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
@@ -249,7 +267,9 @@ for trial in range(nTrials): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
-    #dataBlock_numpy, dataCapRate_hz, recordLen_s, preTrigger_s, triggerTimes = loadData(dataFile=dirFile, trial=trial)
+
+    #downSampledData, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+
     print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
