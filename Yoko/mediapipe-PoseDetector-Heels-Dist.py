@@ -13,11 +13,11 @@ import csv
 import sys
 import os
 
-import cv2
+import cv2  # pip install opencv-python
 import numpy as np
-import pytesseract
+import pytesseract  # pip install pytesseract to do OCR
 
-import mediapipe as mp
+import mediapipe as mp  # pip install mediapipe
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
@@ -27,33 +27,14 @@ from distance_position import find_dist_from_y  # ✅ Import your custom functio
 
 # === MODEL PATH ===
 #model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_lite.task"
-#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
-model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"
+model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"  # Trial 2
+#model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_full.task"  # Trial 1
 
 # === VIDEO FILE ===
-#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
-#video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
-#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
-#video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
-#fileName = f"{video_dir}/{video_file}"
-video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
-#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_2'
-#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_3'
-video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
-#video_file = 'Sub_1_Run_2__6-18-2025_11-47-57 AM.asf'
-#video_file = 'Sub_1_Run_3__6-18-2025_11-49-29 AM.asf'
-#video_file = 'Sub_1_Run_4__6-18-2025_11-50-26 AM.asf'
-#video_file = 'sub_2_run_1_6-18-2025_11-36-03 AM.asf'
-#video_file = 'sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf'
-#video_file = 'sub_2_run_3_pt_2_6-18-2025_11-39-54 AM.asf' #####ISSUE WITH FRAME READ#####
-#video_file = 'sub_2_run_4_6-18-2025_11-41-35 AM.asf'
-#video_file = 'sub_2_run_5_6-18-2025_11-42-48 AM.asf'
-#video_file = 'sub_3_run_4_F_6-18-2025_11-26-08 AM.asf'
-#video_file = 'sub3_run5_6-18-2025_11-28-28 AM.asf'
-#video_file = 'Sub3_run6_6-18-2025_11-32-05 AM.asf'
-#video_file = 'Sub3_run7_6-18-2025_11-34-22 AM.asf'
-
-
+#video_dir = '/Volumes/MY PASSPORT/Stars_day1Data/'
+#video_file = 's2_B8A44FC4B25F_6-3-2025_4-00-20 PM.asf'
+video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/2025_STARS_ProfJ/StudentData/25_06_11'
+video_file = 'subject_2_test_1_6-11-2025_5-40-27 PM.asf'
 fileName = f"{video_dir}/{video_file}"
 
 # === Open video ===
@@ -109,21 +90,28 @@ def calc_dist(p1, p2):
     return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2) 
 
 # === Frame Timing (manual override) ===
-frameTime_ms = 1000 / fps  # time between each frame
+frameTime_ms = 1000 / fps  # Frame duration in milliseconds
 
 # === Clip Setup ===
 clipRunTime_s = 0
-clipStartTime_s = 60 #sec
+clipStartTime_s = 40
 clipStartFrame = 0
-clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps)) #How many frames should we run for this clip?
-#WalkStartFrame = 0
-
+clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
 videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
+
+# === CSV SETUP ===
+csv_path = "heel_tracking_output.csv"
+with open(csv_path, mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow([
+        "Frame", "Timestamp_ms",
+        "LeftHeel_Y", "RightHeel_Y",
+        "LeftHeel_Distance", "RightHeel_Distance"
+    ])
 
 # === Frame Loop ===
 for i in range(clipRunFrames):
-    #frame_timestamp_ms = clipStartTime_s*1000 + frameTime_ms*i 
-    frame_timestamp_ms = frameTime_ms*i 
+    frame_timestamp_ms = int((clipStartFrame + i) * frameTime_ms)
     success, frame = videoObject.read()
     if not success:
         print("⚠️ Frame read failure")
@@ -131,11 +119,9 @@ for i in range(clipRunFrames):
 
     timestamp_str = getDateTime(frame)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    pose_landmarker_result = landmarker.detect_for_video(mp_image, int(frame_timestamp_ms))
+    pose_landmarker_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
 
     if len(pose_landmarker_result.pose_landmarks) > 0:
-        #adjusted_time_ms = int((i - WalkStartFrame) * frameTime_ms) #start from 0ms, as the video starts
-    
         landmarks = pose_landmarker_result.pose_landmarks[0]
         landmarks_w = pose_landmarker_result.pose_world_landmarks[0]
 
@@ -166,7 +152,7 @@ for i in range(clipRunFrames):
         right_dist = find_dist_from_y(right_heel_y_px, debug=True)
 
         # Print using normalized Y, but converted distance
-        print(f"frametime: {frame_timestamp_ms} ms| Left heel Y: {left_heel_y_norm:.4f} → {left_dist:.4f} m | Right heel Y: {right_heel_y_norm:.4f} → {right_dist:.4f} m")
+        print(f"Left heel Y: {left_heel_y_norm:.4f} → {left_dist:.4f} m | Right heel Y: {right_heel_y_norm:.4f} → {right_dist:.4f} m")
 
         # === Save to CSV ===
         with open(csv_path, mode='a', newline='') as file:
@@ -185,15 +171,6 @@ for i in range(clipRunFrames):
     #mask = pose_landmarker_result.segmentation_masks[0].numpy_view()
     #cv2.imshow("Seg mask", mask)
 
-    # === CSV SETUP ===
-    csv_path = "heel_tracking_output.csv"
-    with open(csv_path, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([
-            "Frame", "Timestamp_ms",
-            "LeftHeel_Y", "RightHeel_Y",
-            "LeftHeel_Distance", "RightHeel_Distance"
-        ])
 
     # Show frame
     frame = cv2.resize(frame, displayRez)
@@ -205,4 +182,5 @@ for i in range(clipRunFrames):
 
 videoObject.release()
 cv2.destroyAllWindows()
+
 
