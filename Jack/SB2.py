@@ -34,8 +34,8 @@ from OCR_Detect import timeWith_ms
 model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
 
 # === VIDEO FILE ===
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_18\subject_2'
-file = 'sub_2_run_4_6-18-2025_11-41-35 AM.asf'
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25-06-26'
+file = 'jump_3_6-26-2025_1-38-57 PM.asf'
 fileName = f"{dir}/{file}"  # Path to the video file
 print(fileName)
 
@@ -94,8 +94,8 @@ def calc_dist(p1, p2):
 frameTime_ms = 1000/30 #How long of a time does each frame cover, convert from seconds to milliseconds / a.k.a. frame rate 
 
 # === Clip Setup ===
-clipRunTime_s = 30
-clipStartTime_s = 5
+clipRunTime_s = 0
+clipStartTime_s = 0
 clipStartFrame = 0
 clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
 
@@ -114,7 +114,7 @@ display_times = []
 videoObject.set(cv2.CAP_PROP_POS_MSEC, clipStartTime_s * 1000)
 
 # === CSV SETUP ===
-csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\evil_heel_tracking.csv"
+csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData\boing_heel_tracking.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(["Time", "LeftHeel_m", "RightHeel_m"])

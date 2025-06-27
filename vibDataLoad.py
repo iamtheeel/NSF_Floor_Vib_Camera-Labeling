@@ -238,7 +238,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     return xAxis_data # Save for later use
 
 
-def downSampleData(self, data, downSample):
+def downSampleData(data, downSample):
     from scipy.signal import decimate
 
     #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
