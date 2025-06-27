@@ -268,7 +268,7 @@ for trial in range(nTrials): # Cycle through the trials
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
 
-    #downSampledData, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+    downSampledData, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
@@ -283,4 +283,9 @@ for trial in range(nTrials): # Cycle through the trials
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+    
+    freqYRange = [0.01, 10]
+    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True, save="original")
     plt.show() # Open the plot(s)
