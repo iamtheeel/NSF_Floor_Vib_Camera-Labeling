@@ -243,14 +243,13 @@ def downSampleData(data, downSample):
 
     #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
     #logger.info(f"Before downsample shape: {np.shape(data)} ")
-    nTrials, nCh, timePoints = data.shape
-    downSampled_data = np.empty((nTrials, nCh, timePoints // downSample))  
-    for trial in range(nTrials):
-        for ch in range(nCh):
-            downSampled_data[trial, ch] = decimate(data[trial, ch], 
-                                                   downSample, 
-                                                   ftype='iir', 
-                                                   zero_phase=True)
+    nCh, timePoints = data.shape
+    downSampled_data = np.empty((nCh, timePoints // downSample))  
+    for ch in range(nCh):
+        downSampled_data[ch] = decimate(data[ch], 
+                                               downSample, 
+                                               ftype='iir', 
+                                               zero_phase=True)
 
     return downSampled_data, dataCapRate_hz/downSample
 
@@ -261,14 +260,14 @@ dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dir
 print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
 #trialList = [0, 1, 2, 7]
-trialList = [0]
-for trial in range(nTrials): # Cycle through the trials
-#for i, trial in enumerate(trialList): # Cycle through the trials
+trialList = [7]
+#for trial in range(nTrials): # Cycle through the trials
+for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
 
-    downSampledData, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+    dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
