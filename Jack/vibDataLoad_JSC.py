@@ -138,6 +138,9 @@ def loadData(dataFile, trial=-1):
 
     return dataFromFile, triggerTimes
 
+def sec_to_hms(sec):
+    return str(timedelta(seconds=int(sec)))
+
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
@@ -182,9 +185,10 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     """
     numTimePts = dataBlockToPlot.shape[1]
     if domainToPlot == "time":
-        xAxis_data = np.linspace(xAxisRange[0], xAxisRange[1], numTimePts) #start, stop, number of points
-        xAxis_str = f"Time"
-        xAxisUnits_str = "(s)"
+        start_time_sec = (triggerTime - triggerTime.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+        xAxis_data = start_time_sec + np.arange(numTimePts) / dataCapRate_hz
+        xAxis_str = f"Clock Time"
+        xAxisUnits_str = "(s since midnight)"
 
     if domainToPlot == "freq":
         xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
@@ -231,29 +235,13 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
 
     #Only show the x-axis on the last plot
     axs[-1].get_xaxis().set_visible(True)
-    axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
+    axs[-1].set_xlabel("Time (s)")
+    axs[-1].set_xticks(np.linspace(xAxis_data[0], xAxis_data[-1], 10))
+    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)
 
     #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
     #plt.close()
-    csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack"
-    csv_filename = f"trial_{trial}_graph_output.csv"
-    #csv_filename = f"trial_bogus_graph_output.csv"
-    csv_file = f"{csv_path}/{csv_filename}"
-    with open(csv_file, mode='w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        # Header: Time, Ch1, Ch2, ...
-        header = ["Time"] + [f"Ch{ch}" for ch in plotChList]
-        writer.writerow(header)
-        # Write data: each row is [time, ch1_val, ch2_val, ...]
-        for t_idx in range(len(xAxis_data)):
-            row = [xAxis_data[t_idx]]
-            for ch_idx in range(len(plotChList)):
-                row.append(dataBlockToPlot[ch_idx, t_idx])
-            writer.writerow(row)
     return xAxis_data # Save for later use
-
-def csvPlot(xAxis_data, plotChList, dataBlockToPlot):
-    pass   
 
 
 def downSampleData(data, downSample):
@@ -263,14 +251,17 @@ def downSampleData(data, downSample):
     #logger.info(f"Before downsample shape: {np.shape(data)} ")
     nCh, timePoints = data.shape
     downSampled_data = np.empty((nCh, timePoints // downSample))  
-    for trial in range(nTrials):
-        for ch in range(nCh):
-            downSampled_data[ch] = decimate(data[ch], 
-                                                   downSample, 
-                                                   ftype='iir', 
-                                                   zero_phase=True)
+    for ch in range(nCh):
+        downSampled_data[ch] = decimate(data[ch], 
+                                               downSample, 
+                                               ftype='iir', 
+                                               zero_phase=True)
 
     return downSampled_data, dataCapRate_hz/downSample
+
+def csvOutput():
+
+    return
 
 
 #### Do the stuff
@@ -279,14 +270,14 @@ dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dir
 print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
 trialList = [7, 9, 10, 11]
-#trialList = [0]
+#trialList = [7]
 #for trial in range(nTrials): # Cycle through the trials
 for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
 
-    dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 2) #2x downsample... may need fudging, have not tryed in minCaseEx
+    dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
@@ -301,4 +292,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     #timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+    
+    freqYRange = [0.01, 10]
+    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True, save="original")
     plt.show() # Open the plot(s)

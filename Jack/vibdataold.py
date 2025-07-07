@@ -274,8 +274,8 @@ dataCapRate_hz, recordLen_s, preTrigger_s = loadPeramiters(dataFile=dirFile)
 #exit()
 
 trialList = [7, 9, 10, 11]
-for trial in range(20): # Cycle through the trials
-#for i, trial in enumerate(trialList): # Cycle through the trials
+#for trial in range(20): # Cycle through the trials
+for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTimes = loadData(dataFile=dirFile, trial=trial)

@@ -253,6 +253,9 @@ def downSampleData(data, downSample):
 
     return downSampled_data, dataCapRate_hz/downSample
 
+def csvOutput():
+    return
+
 
 #### Do the stuff
 # Load the data 
