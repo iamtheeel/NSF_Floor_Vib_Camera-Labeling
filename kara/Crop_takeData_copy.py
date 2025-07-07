@@ -30,8 +30,8 @@ model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 
 #Video File
-dir = r"E:\STARS\06_18_2025_Vid_Data"
-file = r"Subject_1-selected\Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+dir = r"E:\STARS\day1_data"
+file = r"25_06_03_s1_1.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -49,24 +49,11 @@ width = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)) # Width of the video fra
 height = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Height of the video frame
 #width = 256
 #height = 256 
-# Define video writers (90-frame clip, initialized when needed)
-out_full = None
-out_crop = None
-
-clip_start = 330  # Example: clip starts at frame 300
-clip_length = 330  # Length of the clip in frames
-clip_end = clip_start + clip_length
-
-"""
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_dir = r"E:\STARS\Clips"  # Set your own output path
-"""
 
 frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
-squareDisplayRez = (int(500),int(500))
 
 #mediaPipe settings
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
@@ -82,7 +69,6 @@ options = PoseLandmarkerOptions(
                                                          ),
                                 #running_mode=VisionRunningMode.VIDEO,
                                 running_mode=VisionRunningMode.VIDEO,
-                                output_segmentation_masks=True
                                )
 
 landmarkerVideo = PoseLandmarker.create_from_options(options)
@@ -91,12 +77,11 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 #functions
 
 def drawLandmark_circle(frame, landmark, color):
-    radius = 5
-    thickness = -1
-    frame_height, frame_width = frame.shape[:2]
+    radius = 15
+    thickness = 5
     #color = [255, 0, 0] #Circle will be red
     #center = int(center_width), int(center_height)
-    center = int(landmark.x*frame_width), int(landmark.y*frame_height) #place center of the circle at the landmark position
+    center = int(landmark.x*width), int(landmark.y*height) #place center of the circle at the landmark position
     #print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")q
     cv2.circle(frame, center, radius, color, thickness) # Draw a circle at the landmark position
 
@@ -138,112 +123,14 @@ def isPersonInFrame(frame, frameIndex):
     else:
         return False, None, frame_timestamp_ms
 
-
 def crop_to_Southhall():
     min_height = 0
     max_height = 254
     adjust_width = (max_height - min_height) //2
-    center_width = width//2 + 60
+    center_width = width//2 +40
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
     return round(min_width), round(max_width), round(min_height), round(max_height) 
-
-def crop_to_Northhall():
-    min_height = 0
-    max_height = height
-    adjust_width = (max_height - min_height) //2
-    center_width = width//2
-    min_width = center_width - adjust_width
-    max_width = center_width + adjust_width
-    return round(min_width), round(max_width), round(min_height), round(max_height) 
-
-def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_height, min_width, max_width):
- 
-    """
-    Returns a full-size frame with the person blurred and the background untouched.
-
-    Parameters:
-        raw_frame: Full-size original image
-        newDim_Frame: Cropped frame (where person is detected)
-        landmark: pose landmarks
-        min_height, max_height, min_width, max_width: Coordinates of the crop in full frame
-
-    Returns:
-        final_frame: raw_frame-sized image with the person blurred
-    """
-    if result.segmentation_masks is None:
-        return raw_frame
-    # Resize the segmentation mask to match the cropped region
-
-    #Saves segmentation mask as numpy array
-    crop_mask = landmark.segmentation_masks[0].numpy_view() 
-    #Resize the numpy array to match the cropped frame size.
-    crop_mask = cv2.resize(crop_mask, (newDim_Frame.shape[1], newDim_Frame.shape[0])) 
-    #Creates a boolean array that tracks where a person is likely located (> .5)
-    #Converts the boolean values to unsigned integers and scales values to binary image format (white = 255 = person = true)
-    binary_crop_mask = (crop_mask > 0.5).astype(np.uint8) * 255  
-
-    #creates a NumPy array of zeros that matches the height and width of the raw_frame
-    full_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.uint8)
-
-    #pastes the binary_crop_mask into the area in the full frame where the cropped frame originally came from. 
-    full_mask[min_height:max_height, min_width:max_width] = binary_crop_mask
-
-    #Inverts mask (person becomes black and background is white)
-    inverse_mask = cv2.bitwise_not(full_mask)
-
-    #Blurs full frame, The values 61, 61 can be adjusted to increase/decrease blur
-    blurred_frame = cv2.GaussianBlur(raw_frame, (61, 61), 0)
-
-    #Saves blurred pixels in locations where full_mask is non-zero (The location of person)
-    person_blurred = cv2.bitwise_and(blurred_frame, blurred_frame, mask=full_mask)
-
-    #Saves unedited pixels in locations where inverse_mask is non-zero (The location of background)
-    background_clear = cv2.bitwise_and(raw_frame, raw_frame, mask=inverse_mask)
-
-    #Adds pixels to create a frame with a blurred person and unedited background
-    final_frame = cv2.add(person_blurred, background_clear)
-
-    return final_frame
-    
-def blur_person_cropFrame(cropped_frame, result):
-    """
-    Blurs only the person within a cropped frame (newDim_Frame),
-    keeping the background untouched.
-
-    Parameters:
-        cropped_frame: The cropped portion of the original frame
-        result: The MediaPipe result containing the segmentation mask
-
-    Returns:
-        final_cropped_frame: The cropped frame with the person blurred
-    """
-    if result.segmentation_masks is None:
-        return cropped_frame
-        
-    #Saves segmentation mask as numpy array
-    crop_mask = result.segmentation_masks[0].numpy_view() 
-    #Resize the numpy array to match the cropped frame size.
-    crop_mask = cv2.resize(crop_mask, (cropped_frame.shape[1], cropped_frame.shape[0])) 
-
-    #Creates a boolean array that tracks where a person is likely located (> .5)
-    #Converts the boolean values to unsigned integers and scales values to binary image format (white = 255 = person = true)
-    binary_crop_mask = (crop_mask > 0.5).astype(np.uint8) * 255  
-
-    #Inverts mask (person becomes black and background is white)
-    inverse_mask = cv2.bitwise_not(binary_crop_mask)
-
-    #Blurs frame, The values 61, 61 can be adjusted to increase/decrease blur
-    blurred_crop = cv2.GaussianBlur(cropped_frame, (61, 61), 0)
-
-    #Saves blurred pixels in locations where blurred_crop is non-zero (The location of person)
-    person_blurred = cv2.bitwise_and(blurred_crop, blurred_crop, mask=binary_crop_mask)
-    #Saves unedited pixels in locations where cropped_frame is non-zero (The location of background)
-    background_clear = cv2.bitwise_and(cropped_frame, cropped_frame, mask=inverse_mask)
-    #Adds pixels to create a frame with a blurred person and unedited background
-    final_cropped_frame = cv2.add(person_blurred, background_clear)
-
-    return final_cropped_frame
 
 def crop_to_ratio(frame, landmarks):
     #Checks if there are landmarkers 
@@ -378,7 +265,7 @@ def crop_to_square(frame, landmarks):
     max_width = center_width + adjust_width
     tot_width = max_width - min_width   #total width of cropped frame
 
-    scale_factor = 1.8
+    scale_factor = 1.9
 
     #scales total width/height
     new_width = tot_width * scale_factor
@@ -404,10 +291,9 @@ def crop_to_square(frame, landmarks):
     
     return round(min_width), round(max_width), round(min_height), round(max_height)
 
-
 # Main code
-start_frame = 0 # Start frame for the clip
-end_frame = 990 
+start_frame = 1500 # Start frame for the clip
+end_frame = int(fCount) 
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
 # Read frames until we reach the frame prior to start frame
@@ -419,23 +305,16 @@ min_height = 0
 max_width = width
 min_width = 0
 
-r"""
 # === CSV SETUP (✅ correct position: outside loop) ===
-csv_path = r"E:\STARS\NS.csv"
+csv_path = r"E:\STARS\myfile2.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([
         "Frame", "Timestamp_ms",
-        "RightHeel Visbility", "LeftHeel Visbility",
-        "RightHeel Presence", "LeftHeel Presence"
+        "LeftHeel_Y", "RightHeel_Y",
+        "LeftHeel_Distance", "RightHeel_Distance"
     ])
 #Opens 
-"""
-
-# Initialize smoothing variables
-smoothed_min_w, smoothed_max_w = None, None
-smoothed_min_h, smoothed_max_h = None, None
-alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 
 #Read through the specified frame count
 for frame_Index in range(start_frame, end_frame): 
@@ -443,93 +322,70 @@ for frame_Index in range(start_frame, end_frame):
     if not success: # If the frame was not read successfully, break the loop
         print("Failed to read frame")
         exit()
-    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and
+    newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and 
+    cv2.imshow("Frame to send model", newDim_Frame) #displays frame
     #Shrinking it down to dimensions
     #Changes dimensions before finding landmarks
     drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
     if newDim_Frame is not None: #Failsafe "if newDim_Frame is not None:"
+    #good, result = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person in the frame. Returns frame and landmarkers.
+    #rescale and reshift
         good = False
         good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
         #result is the landmarks
         if good and result is not None:
-            final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
-            final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
             landmarks = result.pose_landmarks[0]
-            #drawLandmark_circle(final_frame, landmarks[29], [255,0,0]) # Draw green landmarks before transition
-            drawLandmark_circle(final_frameCrop, landmarks[29], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_circle(final_frame, landmarks[30], [255,0,0]) # Draw green landmarks before transition
-            drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_circle(raw_frame, landmarks[29], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [255,0,0]) # Draw green landmarks before transition
+            drawLandmark_circle(raw_frame, landmarks[30], [255,0,0]) # Draw green landmarks before transition
             for i in range(len(landmarks)):   
                 landmarks[i].x = (landmarks[i].x * (max_width - min_width) + min_width) / width
                 landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / height
-            drawLandmark_circle(final_frame, landmarks[29], [0,255,0]) # Draw green landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [0,255,0]) # Draw blue landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [0,255,0]) # Draw green landmarks after transition
-            drawLandmark_circle(final_frame, landmarks[30], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_circle(raw_frame, landmarks[29], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [0,255,0]) # Draw blue landmarks after transition
+            drawLandmark_circle(raw_frame, landmarks[30], [0,255,0]) # Draw blue landmarks after transition
+
             min_width, max_width, min_height, max_height = crop_to_square(raw_frame, landmarks) #, landmarks
-
-            # Apply exponential smoothing
-            if smoothed_min_w is None:
-                smoothed_min_w, smoothed_max_w = min_width, max_width
-                smoothed_min_h, smoothed_max_h = min_height, max_height
-            else:
-                smoothed_min_w = int(alpha * min_width + (1 - alpha) * smoothed_min_w)
-                smoothed_max_w = int(alpha * max_width + (1 - alpha) * smoothed_max_w)
-                smoothed_min_h = int(alpha * min_height + (1 - alpha) * smoothed_min_h)
-                smoothed_max_h = int(alpha * max_height + (1 - alpha) * smoothed_max_h)
-
-            min_width, max_width = smoothed_min_w, smoothed_max_w
-            min_height, max_height = smoothed_min_h, smoothed_max_h
-            #min_width, max_width, min_height, max_height = crop_with_padding(raw_frame, landmarks) #, landmarks
-            right_heel_visibility = landmarks[30].visibility
-            left_heel_visibility = landmarks[29].visibility
-            right_heel_presence = landmarks[30].presence
-            left_heel_presence = landmarks[29].presence
-            resizedCropFrame = cv2.resize(final_frameCrop, squareDisplayRez) # Resize the frame for displayd 
-            cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
-            resizedFrame = cv2.resize(final_frame, displayRez) # Resize the frame for displayd
-            cv2.imshow("Frame", resizedFrame) #displays frame
-            key1 = cv2.waitKey(1) # Wait for a key press
-            if key1 == ord('q') & 0xFF: exit()
+        #print(f"BACK IN MAIN for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)} Minwidth: {min_width}. Maxwidth: {max_width} ")
+        #new_Frame = crop_with_padding(raw_frame, landmarks) #Returns cropped frame
+        #resizedFrame = cv2.resize(new_Frame, displayRez) # Resize the frame for display
+        
+        # === Heel Y values (normalized and pixel)
+            left_heel_y_norm = landmarks[29].y
+            right_heel_y_norm = landmarks[30].y
+            left_heel_y_px = left_heel_y_norm * height
+            right_heel_y_px = right_heel_y_norm * height
+            # === Distances using your function
+            left_dist = find_dist_from_y(left_heel_y_px, debug=True)
+            right_dist = find_dist_from_y(right_heel_y_px, debug=True)
+        
+    # === Save to CSV (✅ append only)
+    # === Save to CSV (✅ append only)
+            with open(csv_path, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([
+                frame_Index,
+                adjusted_time_ms,
+                left_heel_y_norm,
+                right_heel_y_norm,
+                left_dist,
+                right_dist
+                ])
         else:
-            #min_width, max_width, min_height, max_height = crop_to_Southhall(raw_frame, min_width) #, landmarks
+            #f.write(f"BACK IN MAIN BUT NOT GREAT for frame: {videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)}")
+            #f.write("\n")
             if frame_Index % 2 ==0:
                 min_width, max_width, min_height, max_height = crop_to_Southhall() #, landmarks
             else:
-                min_width, max_width, min_height, max_height = crop_to_Northhall() #, landmarks
-            right_heel_visibility = 0
-            left_heel_visibility = 0
-            right_heel_presence = 0
-            left_heel_presence = 0
-"""
-    # === Save to CSV (✅ append only)
-    # === Save to CSV (✅ append only)
-    with open(csv_path, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([
-        frame_Index,
-        adjusted_time_ms,
-        right_heel_visibility,
-        left_heel_visibility,
-        right_heel_presence, 
-        left_heel_presence
-        ])
+                min_width = 0
+                max_width = width
+                min_height = 0
+                max_height = height
 
-"""
-
-      
-#    if clip_start <= frame_Index < clip_end:
- #       if out_full is None:
-#            out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
-#            out_crop = cv2.VideoWriter(os.path.join(output_dir, "crop_frame_clip.avi"), fourcc, fps, (final_frameCrop.shape[1], final_frameCrop.shape[0]))
-
- #       out_full.write(final_frame)
- #       out_crop.write(final_frameCrop)
-  
-# Release writers after loop
-# if out_full:
-#     out_full.release()
-# if out_crop:
-#     out_crop.release()
+    resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+    cv2.imshow("Frame", resizedFrame) #displays frame
+    key1 = cv2.waitKey(0) # Wait for a key press
+    key2 = 0
+    if key1 == ord('q') or key2 == ord('q') & 0xFF: exit()
