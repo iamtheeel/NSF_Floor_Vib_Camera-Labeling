@@ -421,6 +421,7 @@ min_width = 0
 
 r"""
 # === CSV SETUP (✅ correct position: outside loop) ===
+<<<<<<< HEAD
 csv_path = r"E:\STARS\NS.csv"
 with open(csv_path, mode='w', newline='') as file:
     writer = csv.writer(file)
@@ -429,6 +430,16 @@ with open(csv_path, mode='w', newline='') as file:
         "RightHeel Visbility", "LeftHeel Visbility",
         "RightHeel Presence", "LeftHeel Presence"
     ])
+=======
+#csv_path = r"E:\STARS\fullframewithsquareSN.csv"
+#with open(csv_path, mode='w', newline='') as file:
+#    writer = csv.writer(file)
+#    writer.writerow([
+#        "Frame", "LeftHeel_Visibility",
+#        "RightHeel_Visibility", "LeftHeel_Presence",
+#        "RightHeel_Presence"
+#    ])
+>>>>>>> 3f55b61 (Working on loading cropped data)
 #Opens 
 """
 
@@ -506,6 +517,7 @@ for frame_Index in range(start_frame, end_frame):
 """
     # === Save to CSV (✅ append only)
     # === Save to CSV (✅ append only)
+<<<<<<< HEAD
     with open(csv_path, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([
@@ -533,3 +545,20 @@ for frame_Index in range(start_frame, end_frame):
 #     out_full.release()
 # if out_crop:
 #     out_crop.release()
+=======
+    #with open(csv_path, mode='a', newline='') as file:
+    #    writer = csv.writer(file)
+    #    writer.writerow([
+    #    frame_Index,
+    #    left_heel_visibility,
+    #    right_heel_visibility,
+    #    left_heel_presence,
+    #    right_heel_presence
+    #    ])
+
+    resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+    cv2.imshow("Frame", resizedFrame) #displays frame
+    key1 = cv2.waitKey(1) # Wait for a key press
+    key2 = 0
+    if key1 == ord('q') or key2 == ord('q') & 0xFF: exit()
+>>>>>>> 3f55b61 (Working on loading cropped data)
