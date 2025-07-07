@@ -1,0 +1,47 @@
+import cv2
+import imageio
+
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25-06-26'
+file = 'wave_3_6-26-2025_12-03-18 PM.asf'
+filename = f"{dir}/{file}"
+print(filename)
+
+
+videoObject = cv2.VideoCapture(filename)
+if not videoObject.isOpened():
+    print("Error: Could not open video file.")
+    exit()
+print(f"Loaded: {filename}")
+
+fps = videoObject.get(cv2.CAP_PROP_FPS)
+if fps == 0:
+    fps = 30  # fallback if FPS is not detected
+    
+
+start_sec = 5
+end_sec = 15
+
+frames = []
+frame_count = 0
+
+while True:
+    ret, frame = videoObject.read()
+    if not ret:
+        break
+    # Get the current timestamp in seconds
+    current_time_sec = videoObject.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+    if current_time_sec < start_sec:
+        continue
+    if current_time_sec > end_sec:
+        break
+    # Keep 2 out of every 3 frames for 1.5x speed
+    if len(frames) % 3 != 2:
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(frame_rgb)
+
+
+videoObject.release()
+
+gif_path = f"{dir}/wave_3_6-26-2025_12-03-18_PM_spedup_trimmed.gif"
+imageio.mimsave(gif_path, frames, duration=1/(fps*1.5))
+print(f"Saved GIF: {gif_path}")

@@ -18,12 +18,12 @@ import pytesseract  # pip install pytesseract
 # Media pipe model: 
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
-model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_lite.task" #5.5 MB
+#model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_lite.task" #5.5 MB
 #model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_full.task" #9.0 MB
-# model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
+model_path = r"C:\Users\notyo\Documents\STARS\mediapipe\pose_landmarker_heavy.task" #29.2 MB
 
-dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_11'
-file = 'subject_2_test_3_6-11-2025_5-46-23 PM.asf'
+dir = r'C:\Users\notyo\Documents\STARS\StudentData\25-06-26'
+file = 'wave_3_6-26-2025_12-03-18 PM.asf'
 fileName = f"{dir}/{file}"  # Path to the video file
 
 ## Open our video File
@@ -92,7 +92,7 @@ def draw_landmarks_on_image(image, pose_landmarker_result):
         cv2.circle(image, (x_px, y_px), 4, (0, 255, 0), -1)  # Green dot
     return image
 
-clipStartSecs = 5 #Start at this many seconds into the video
+clipStartSecs = .1 #Start at this many seconds into the video
 clipEndSecs = 50 #End this many seconds into the video
 
 clipStartTime_f = fps * clipStartSecs
@@ -112,6 +112,11 @@ print(fps)
 print(1000/fps)
 newFPS = 1000/fps
 frame_timestamp_ms = 0 # Skip to frame x before starting the loop
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for mp4
+out_path = r'C:\Users\notyo\Documents\STARS\goutput.mp4'  # Change as needed
+out = cv2.VideoWriter(out_path, fourcc, fps, displayRez)
+
 for i in range(int(clipEndTime_f)): # Go through each frame
     frame_timestamp_ms += int(i*frameTime_ms) # for i = 0, no increment, i=1 will go to next time
     sucess, frame = videoObject.read() #.read() returns a boolean value and the frame itself. 
@@ -131,16 +136,14 @@ for i in range(int(clipEndTime_f)): # Go through each frame
     h, w, _ = frame.shape
 
     # MediaPipe Pose indices for foot landmarks
-    LEFT_HEEL = 29
-    RIGHT_HEEL = 30
+    my_list = range(33)
 
     if pose_landmarker_result.pose_landmarks:
         landmarks = pose_landmarker_result.pose_landmarks[0]
-        for idx, color in zip([LEFT_HEEL, RIGHT_HEEL],
-                            [(255,0,0), (0,255,0)]):
+        for idx in my_list:
             x = int(landmarks[idx].x * w)
             y = int(landmarks[idx].y * h)
-            cv2.circle(frame, (x, y), 3, color, -1)
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
     ##time rollover variables
     
     current_time = getTime(frame)
@@ -159,9 +162,11 @@ for i in range(int(clipEndTime_f)): # Go through each frame
 
     #Show the frame 
     frame = cv2.resize(frame, displayRez)
+    out.write(frame)
     cv2.imshow("Input", frame)
     #print(f"Frame: {i}, timeStamp: {(i*newFPS - 12*newFPS)/1000}")
 
 
     key = cv2.waitKey(int(1))
     if key == ord('q') & 0xFF: exit()
+out.release()
