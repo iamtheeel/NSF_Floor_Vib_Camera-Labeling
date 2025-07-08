@@ -20,9 +20,14 @@ train_data = datasets.MNIST(
 
 
 print(f"Data: {len(train_data.data)}, labels: {len(train_data.targets)}")
+print(f"Data Type:{type(train_data[50])}")
 
-image, label = train_data[50]
+image, label = train_data[5000]
+print(f"Data Type:{type(image)}")
+print(f"Label: {label}")
 image = np.array(image)  # shape: (H, W, 3), RGB
+print(f"Data Type:{type(image)}, {image.shape}")
+
 cv2.imshow("label", image)
 cv2.waitKey(0)
 
