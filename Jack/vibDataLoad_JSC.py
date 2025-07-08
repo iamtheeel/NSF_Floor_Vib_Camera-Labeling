@@ -17,6 +17,8 @@ dataFreqRange_hz = [0,0] # will want this later
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_18'
 dataFile = "Yoko_s3_Run1.hdf5"
 
+
+
 dirFile = f"{dir}/{dataFile}"
 
 # What data are we interested in
@@ -223,7 +225,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         axs[i].plot(xAxis_data, yAxis_data)
     
         # Set the Axis limits and scale
-        axs[i].set_xlim(xAxisRange) 
+        axs[i].set_xlim([xAxis_data[0], xAxis_data[-1]])
         axs[i].set_ylim(yAxisRange)
         if logX: axs[i].set_xscale('log')  # Set log scale
         if logY: axs[i].set_yscale('log')  # Set log scale
@@ -234,10 +236,13 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
             axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
 
     #Only show the x-axis on the last plot
-    axs[-1].get_xaxis().set_visible(True)
+    '''axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel("Time (s)")
     axs[-1].set_xticks(np.linspace(xAxis_data[0], xAxis_data[-1], 10))
-    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)
+    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)'''
+
+    axs[-1].get_xaxis().set_visible(True)
+    axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
     #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
     #plt.close()
@@ -259,8 +264,17 @@ def downSampleData(data, downSample):
 
     return downSampled_data, dataCapRate_hz/downSample
 
-def csvOutput():
-
+def csvOutput(plotChList, xAxis_data, dataBlockToSave):
+    with open(csv_file, mode='w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        header = ["Time"] + [f"Ch{ch}" for ch in plotChList]
+        writer.writerow(header)
+        # Write data: each row is [time, ch1_val, ch2_val, ...]
+        for t_idx in range(len(xAxis_data)):
+            row = [xAxis_data[t_idx]]
+            for ch_idx in range(len(plotChList)):
+                row.append(dataBlockToSave[ch_idx, t_idx])
+            writer.writerow(row)
     return
 
 
@@ -268,15 +282,20 @@ def csvOutput():
 # Load the data 
 dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
 print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
+#==1652
 
 trialList = [7, 9, 10, 11]
 #trialList = [7]
 #for trial in range(nTrials): # Cycle through the trials
 for i, trial in enumerate(trialList): # Cycle through the trials
+    csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData"
+    csv_filename = f"trial_{trial}_graph_shoe_output.csv"
+    csv_file = f"{csv_path}/{csv_filename}"
 
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
 
+    #downsample
     dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
@@ -292,6 +311,7 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     #timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+    csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
     
     freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
