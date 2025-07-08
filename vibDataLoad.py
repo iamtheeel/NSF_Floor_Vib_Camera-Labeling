@@ -291,6 +291,12 @@ for trial in range(nTrials): # Cycle through the trials
     print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
+    #Plot before downSam
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    timeYRange = np.max(np.abs(dataBlock_sliced))
+    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+
     if downSampleRate <= 1: 
         dataCapRate_hz = fileDataCapRate_hz
     else:
