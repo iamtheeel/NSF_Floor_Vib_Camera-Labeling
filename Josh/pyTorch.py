@@ -61,16 +61,18 @@ print(f"Total samples in dataset: {len(dataset)}")
 
 for i, (window, label) in enumerate(dataset):
     print(f"Window {i}: {window.shape}, label: {label}") 
-
+    plt.plot(window)
+    plt.show()
     # Plot the data
     # Change the x-axis to miliseconds
 
-
+exit()
 train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 for i, (batch_window, batch_label) in enumerate(train_loader):
     print(f"Type: {type(batch_window)}, {type(batch_label)}")  
     print(f"Shape: {batch_window.shape}, {batch_label.shape}")
+    print(batch_label)
 
     # Plot the windows in the batch
     
