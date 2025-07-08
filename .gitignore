@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 kara/MNIST_dataSet.py
 EMNIST/EMNIST/raw/emnist-balanced-test-images-idx3-ubyte
 EMNIST/EMNIST/raw/emnist-balanced-test-labels-idx1-ubyte
@@ -24,3 +25,6 @@ EMNIST/EMNIST/raw/emnist-mnist-test-labels-idx1-ubyte
 EMNIST/EMNIST/raw/emnist-mnist-train-images-idx3-ubyte
 EMNIST/EMNIST/raw/emnist-mnist-train-labels-idx1-ubyte
 EMNIST/EMNIST/raw/gzip.zip
+=======
+MNIST
+>>>>>>> acc2d8a (Git hell)
