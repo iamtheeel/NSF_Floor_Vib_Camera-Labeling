@@ -249,7 +249,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     #plt.close()
     return xAxis_data # Save for later use
 
-def downSampleData(data, downSample):
+def downSampleData(data, dataCapRate, downSample):
     from scipy.signal import decimate
 
     #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
@@ -261,13 +261,15 @@ def downSampleData(data, downSample):
     example_out = decimate(data[0], downSample, ftype='iir', zero_phase=True)
     downSampled_data = np.empty((nCh, example_out.shape[0]))
 
+    print(f"DownSample Data Shape: {downSampled_data.shape}")
     for ch in range(nCh):
+        print(f"DownSample Data Shape: {downSampled_data[ch].shape}")
         downSampled_data[ch] = decimate(data[ch], 
                                                downSample, 
                                                ftype='iir', 
                                                zero_phase=True)
 
-    return downSampled_data, dataCapRate_hz/downSample
+    return downSampled_data, dataCapRate/downSample
 
 def csvOutput():
     return
@@ -275,20 +277,24 @@ def csvOutput():
 
 #### Do the stuff
 # Load the data 
-dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
-print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
+fileDataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
+print(f"Data cap rate: {fileDataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
-#for trial in range(nTrials): # Cycle through the trials
-#trialList = [0, 1, 2, 7]
+downSampleRate = 4
+trialList = [0, 1, 2, 7]
 #trialList = [7]
-dataCapRate_hz = 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
+#fileDataCapRate_hz = 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 trialList = [7]
-for i, trial in enumerate(trialList): # Cycle through the trials
+for trial in range(nTrials): # Cycle through the trials
+#for i, trial in enumerate(trialList): # Cycle through the trials
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
+    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
-    #dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+    if downSampleRate <= 1: 
+        dataCapRate_hz = fileDataCapRate_hz
+    else:
+        dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, fileDataCapRate_hz, downSampleRate) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     if oldData == False: print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
