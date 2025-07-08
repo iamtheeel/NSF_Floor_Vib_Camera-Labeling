@@ -14,6 +14,7 @@ dataFreqRange_hz = [0,0] # will want this later
 #dir = 'StudentData/25_06_03/Subject_1'
 #dataFile = "data/Yoko_s3_3.hdf5"
 #dataFile = "Kera_2.hdf5"
+oldData = False
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_06_18'
 dataFile = "Yoko_s3_Run1.hdf5"
 
@@ -47,7 +48,7 @@ def print_attrs(name, obj): #From Chatbot
 
 def get_peram(perams, peramName:str, asStr=False):
     if asStr:
-        peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
+        peram_value= float(perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8'))
     else:
         peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
     units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
@@ -74,13 +75,14 @@ def loadPeramiters(dataFile):
         filePerams = h5file['experiment/general_parameters'][:]
 
     #Extract the data capture info from the file
-    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
-    recordLen_s, _ = get_peram(filePerams, 'record_length')
+    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs', asStr=oldData)
+    recordLen_s, _ = get_peram(filePerams, 'record_length', asStr=oldData)
     preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
 
     print(filePerams.dtype.names)   # Show the peramiter field names
     print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
 
+    print(f"DataC Cap Rate: {type(dataCapRate_hz)}")
     if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
 
@@ -100,23 +102,26 @@ def loadData(dataFile, trial=-1):
 
     """
     print(f"Loading file: {dataFile}")
+    triggerTimes = []
 
     with h5py.File(dataFile, 'r') as h5file:
 
         if trial >= 0:
             dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
             runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
-            triggerTimes, _ = get_peram(runPerams, 'triggerTime', asStr=False)
-            triggerTimes = next(
+            if oldData == False:
+                triggerTimes, _ = get_peram(runPerams, 'triggerTime', asStr=False)
+                triggerTimes = next(
                                 row['value'] for row in runPerams
                                 if row['parameter'] == b'triggerTime' and row['id'] == trial
                                 ).decode() #Get from string
-            triggerTimes = datetime.fromtimestamp(float(triggerTimes))
+                triggerTimes = datetime.fromtimestamp(float(triggerTimes))
             print(f"Loaded trial: {trial}")
         elif trial == -1: # Load the whole thing
             dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
             runPerams = h5file['experiment/specific_parameters']#Load all the rows of data to the block, will not work without the [:]
-            triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
+            if oldData == False:
+                triggerTimes = get_perams(runPerams, 'triggerTime', asType='dateTime')
         # Otherwize, we are just after the peramiters
 
     if trial <=0:
@@ -139,9 +144,6 @@ def loadData(dataFile, trial=-1):
             print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
 
     return dataFromFile, triggerTimes
-
-def sec_to_hms(sec):
-    return str(timedelta(seconds=int(sec)))
 
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
@@ -225,7 +227,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         axs[i].plot(xAxis_data, yAxis_data)
     
         # Set the Axis limits and scale
-        axs[i].set_xlim([xAxis_data[0], xAxis_data[-1]])
+        axs[i].set_xlim([xAxis_data[0], xAxis_data[-1]]) 
         axs[i].set_ylim(yAxisRange)
         if logX: axs[i].set_xscale('log')  # Set log scale
         if logY: axs[i].set_yscale('log')  # Set log scale
@@ -236,11 +238,6 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
             axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
 
     #Only show the x-axis on the last plot
-    '''axs[-1].get_xaxis().set_visible(True)
-    axs[-1].set_xlabel("Time (s)")
-    axs[-1].set_xticks(np.linspace(xAxis_data[0], xAxis_data[-1], 10))
-    axs[-1].set_xticklabels([sec_to_hms(s) for s in np.linspace(xAxis_data[0], xAxis_data[-1], 10)], rotation=45)'''
-
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
@@ -248,21 +245,27 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     #plt.close()
     return xAxis_data # Save for later use
 
-
-def downSampleData(data, downSample):
+def downSampleData(data, dataCapRate, downSample):
     from scipy.signal import decimate
 
     #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
     #logger.info(f"Before downsample shape: {np.shape(data)} ")
     nCh, timePoints = data.shape
-    downSampled_data = np.empty((nCh, timePoints // downSample))  
+    #downSampled_data = np.array([
+    #    resample_poly(data[ch], up=1, down=downSample) for ch in range(nCh)
+    #])
+    example_out = decimate(data[0], downSample, ftype='iir', zero_phase=True)
+    downSampled_data = np.empty((nCh, example_out.shape[0]))
+
+    print(f"DownSample Data Shape: {downSampled_data.shape}")
     for ch in range(nCh):
+        print(f"DownSample Data Shape: {downSampled_data[ch].shape}")
         downSampled_data[ch] = decimate(data[ch], 
                                                downSample, 
                                                ftype='iir', 
                                                zero_phase=True)
 
-    return downSampled_data, dataCapRate_hz/downSample
+    return downSampled_data, dataCapRate/downSample
 
 def csvOutput(plotChList, xAxis_data, dataBlockToSave):
     with open(csv_file, mode='w', newline='') as csvfile:
@@ -280,10 +283,11 @@ def csvOutput(plotChList, xAxis_data, dataBlockToSave):
 
 #### Do the stuff
 # Load the data 
-dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
-print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
-#==1652
+fileDataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
+dataCapRate_hz = fileDataCapRate_hz
+print(f"Data cap rate: {fileDataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
+downSampleRate = 2
 trialList = [7, 9, 10, 11]
 #trialList = [7]
 #for trial in range(nTrials): # Cycle through the trials
@@ -293,12 +297,21 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     csv_file = f"{csv_path}/{csv_filename}"
 
     print(f"Running Trial: {trial}")
-    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial)
+    dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
-    #downsample
-    dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+    #Plot before downSam
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    #timeYRange = np.max(np.abs(dataBlock_sliced))
+    timeYRange = 0.01
+    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
 
-    print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
+    if downSampleRate <= 1: 
+        dataCapRate_hz = fileDataCapRate_hz
+    else:
+        dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, fileDataCapRate_hz, downSampleRate) #4x downsample... may need fudging, have not tryed in minCaseEx
+
+    if oldData == False: print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
@@ -312,7 +325,7 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
     csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
-    
+
     freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 

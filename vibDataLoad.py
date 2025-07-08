@@ -215,7 +215,10 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         # Plot the ch data
         timeD_data = dataBlockToPlot[i,:]  #Note: Numpy will alow negitive indexing (-1 = the last row)
         if domainToPlot == "time":
-            yAxis_data = timeD_data
+            start_time_sec = (triggerTime - triggerTime.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+            xAxis_data = start_time_sec + np.arange(numTimePts) / dataCapRate_hz
+            xAxis_str = f"Clock Time"
+            xAxisUnits_str = "(s since midnight)"
         if domainToPlot == "freq":
             # Calculate the fft
             # Apply a hanning window to minimize spectral leakage
