@@ -17,8 +17,10 @@ import sys
 import os
 
 # === Fix import path to reach distance_position.py ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '...')))
 from distance_position import find_dist_from_y  # ✅ Import your custom function
+
+from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
 
 ## Configureations:
 # Media pipe model: 
@@ -30,8 +32,14 @@ model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 
 #Video File
-dir = r"E:\STARS\06_18_2025_Vid_Data"
-file = r"Subject_1-selected\Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+#dir = r"E:\STARS"
+#file = r"06_18_2025_Vid_Data\subject_2-selected\sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+
+#dir = r"E:\STARS"
+#file = r"06_18_2025_Vid_Data\Subject_1-selected\Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+
+dir = r"E:\STARS"
+file = r"06_18_2025_Vid_Data\Subject_1-selected\Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -49,18 +57,26 @@ width = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)) # Width of the video fra
 height = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Height of the video frame
 #width = 256
 #height = 256 
+
+"""
 # Define video writers (90-frame clip, initialized when needed)
 out_full = None
 out_crop = None
 
-clip_start = 330  # Example: clip starts at frame 300
-clip_length = 330  # Length of the clip in frames
+clip_start = 0  # Example: clip starts at frame 300
+clip_length = int(fCount)  # Length of the clip in frames
 clip_end = clip_start + clip_length
+maintain_height_max = height
+maintain_height_min = 0
+maintain_width_max = width
+maintain_width_min = 0
+"""
 
-"""
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_dir = r"E:\STARS\Clips"  # Set your own output path
-"""
+maintain_dim = [height, 0, width, 0] 
+
+#fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#output_dir = r"E:\STARS\Clips"  # Set your own output path
+
 
 frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
@@ -90,8 +106,22 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 #functions
 
-def drawLandmark_circle(frame, landmark, color):
-    radius = 5
+
+# === OCR timestamp function ===
+def getDateTime(frame):
+    dateTime_img = frame[0:46, 0:384, :]
+    dateTime_img_bw = cv2.cvtColor(dateTime_img, cv2.COLOR_BGR2GRAY)
+    dateTime_img_bw = 255 - dateTime_img_bw
+    data = pytesseract.image_to_data(dateTime_img_bw, output_type=pytesseract.Output.DICT)
+    try:
+        #date_str = data['text'][4]
+        time_str = data['text'][5]
+        return f"{time_str}"
+    except:
+        return "OCR Error"
+    
+def drawLandmark_circle(frame, landmark, color, radius):
+    radius = radius
     thickness = -1
     frame_height, frame_width = frame.shape[:2]
     #color = [255, 0, 0] #Circle will be red
@@ -122,17 +152,24 @@ def drawLandmark_square(frame, minWidth, maxWidth, minHeight, maxHeight):
     cv2.line(frame, XYPt, xYPt, color, thickness)
     cv2.line(frame, xYPt, xyPt, color, thickness)
 
-def isPersonInFrame(frame, frameIndex):
+def isPersonInFrame(frame, frameIndex): #(frame, frameIndex)
+    """
+    Checks for pose landmarks in the given frame.
+
+    Returns:
+        pose_results: A list of objects containing pose landmarks
+        frame_timestamp_ms: The timestamp of the frame in milliseconds
+        bool: True if pose landmarks are detected, False otherwise
+    """
 
     frame_timestamp_ms = int(frameIndex * frameTime_ms) 
     if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10: # Check if the timestamp is valid
-        #print(f"Invalid timestamp: {frame_timestamp_ms}")
         return None #Exit function if the timestamp is invalid
 
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame) #Create a MediaPipe image from the frame
     pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms) #Detect the pose landmarks in the frame
     
-    #If there are no pose landmarkers
+    #If there are pose landmarkers return them and the frame timestamp
     if len(pose_landmarker_result.pose_landmarks) > 0: 
         return True, pose_landmarker_result, frame_timestamp_ms
     else:
@@ -140,22 +177,37 @@ def isPersonInFrame(frame, frameIndex):
 
 
 def crop_to_Southhall():
+
+    """
+    Crops the frame to the South Hallway dimensions.
+
+    Returns:
+        dimensions: min_width, max_width, min_height, max_height --> encapsulates the South Hallway
+    """
     min_height = 0
     max_height = 254
     adjust_width = (max_height - min_height) //2
     center_width = width//2 + 60
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
-    return round(min_width), round(max_width), round(min_height), round(max_height) 
+    direction  = "South"
+    return round(min_width), round(max_width), round(min_height), round(max_height), direction 
 
 def crop_to_Northhall():
+    """
+    Crops the frame to the North Hallway dimensions.
+
+    Returns:
+        dimensions: min_width, max_width, min_height, max_height --> encapsulates the North Hallway
+    """
     min_height = 0
     max_height = height
     adjust_width = (max_height - min_height) //2
     center_width = width//2
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
-    return round(min_width), round(max_width), round(min_height), round(max_height) 
+    direction  = "North"
+    return round(min_width), round(max_width), round(min_height), round(max_height), direction
 
 def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_height, min_width, max_width):
  
@@ -166,7 +218,7 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
         raw_frame: Full-size original image
         newDim_Frame: Cropped frame (where person is detected)
         landmark: pose landmarks
-        min_height, max_height, min_width, max_width: Coordinates of the crop in full frame
+        dimensions: min_height, max_height, min_width, max_width --> Coordinates of the crop in full frame
 
     Returns:
         final_frame: raw_frame-sized image with the person blurred
@@ -174,7 +226,6 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
     if result.segmentation_masks is None:
         return raw_frame
     # Resize the segmentation mask to match the cropped region
-
     #Saves segmentation mask as numpy array
     crop_mask = landmark.segmentation_masks[0].numpy_view() 
     #Resize the numpy array to match the cropped frame size.
@@ -182,28 +233,20 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
     #Creates a boolean array that tracks where a person is likely located (> .5)
     #Converts the boolean values to unsigned integers and scales values to binary image format (white = 255 = person = true)
     binary_crop_mask = (crop_mask > 0.5).astype(np.uint8) * 255  
-
     #creates a NumPy array of zeros that matches the height and width of the raw_frame
     full_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.uint8)
-
     #pastes the binary_crop_mask into the area in the full frame where the cropped frame originally came from. 
     full_mask[min_height:max_height, min_width:max_width] = binary_crop_mask
-
     #Inverts mask (person becomes black and background is white)
     inverse_mask = cv2.bitwise_not(full_mask)
-
     #Blurs full frame, The values 61, 61 can be adjusted to increase/decrease blur
     blurred_frame = cv2.GaussianBlur(raw_frame, (61, 61), 0)
-
     #Saves blurred pixels in locations where full_mask is non-zero (The location of person)
     person_blurred = cv2.bitwise_and(blurred_frame, blurred_frame, mask=full_mask)
-
     #Saves unedited pixels in locations where inverse_mask is non-zero (The location of background)
     background_clear = cv2.bitwise_and(raw_frame, raw_frame, mask=inverse_mask)
-
     #Adds pixels to create a frame with a blurred person and unedited background
     final_frame = cv2.add(person_blurred, background_clear)
-
     return final_frame
     
 def blur_person_cropFrame(cropped_frame, result):
@@ -220,42 +263,46 @@ def blur_person_cropFrame(cropped_frame, result):
     """
     if result.segmentation_masks is None:
         return cropped_frame
-        
     #Saves segmentation mask as numpy array
     crop_mask = result.segmentation_masks[0].numpy_view() 
     #Resize the numpy array to match the cropped frame size.
     crop_mask = cv2.resize(crop_mask, (cropped_frame.shape[1], cropped_frame.shape[0])) 
-
     #Creates a boolean array that tracks where a person is likely located (> .5)
     #Converts the boolean values to unsigned integers and scales values to binary image format (white = 255 = person = true)
     binary_crop_mask = (crop_mask > 0.5).astype(np.uint8) * 255  
-
     #Inverts mask (person becomes black and background is white)
     inverse_mask = cv2.bitwise_not(binary_crop_mask)
-
     #Blurs frame, The values 61, 61 can be adjusted to increase/decrease blur
     blurred_crop = cv2.GaussianBlur(cropped_frame, (61, 61), 0)
-
     #Saves blurred pixels in locations where blurred_crop is non-zero (The location of person)
     person_blurred = cv2.bitwise_and(blurred_crop, blurred_crop, mask=binary_crop_mask)
     #Saves unedited pixels in locations where cropped_frame is non-zero (The location of background)
     background_clear = cv2.bitwise_and(cropped_frame, cropped_frame, mask=inverse_mask)
     #Adds pixels to create a frame with a blurred person and unedited background
     final_cropped_frame = cv2.add(person_blurred, background_clear)
-
     return final_cropped_frame
 
 def crop_to_ratio(frame, landmarks):
-    #Checks if there are landmarkers 
+    """
+    Crops the frame based on the pose landmarks while maintaining the original aspect ratio of the original frame 
 
+    Parameters:
+        frame: The original, uncropped frame
+        landmark: The MediaPipe result containing the pose landmarks
+
+    Returns:
+        dimension: min_width, max_width, min_height, max_height  --> Dimensions to crop the frame around person w/ aspect ratio  
+    """
+    #Checks if there are landmarkers (if none, return full frame)
+    if landmarks is None: 
+        return 0, frame.shape[1], 0, frame.shape[0] #frame.shape[1] = width, frame.shape[0] = height
     frame_height, frame_width = frame.shape[:2] 
-
     # Use only major body parts that are symmetrical and close to the torso
     core_landmarks = [11, 12, 23, 24, 25, 26, 27, 28, 31, 32]  # shoulders, hips, knees, etc.
-
-    min_width = max_width = landmarks[0].x #Initiates width variables to landmark 0
-    min_height = max_height = landmarks[0].y #Initiates height variables to landmark 
-
+    #Initiates width variables to landmark 0
+    min_width = max_width = landmarks[0].x 
+    #Initiates height variables to landmark 
+    min_height = max_height = landmarks[0].y 
     #Iterates through all landmarks to find max and min: x value = width, y value = height
     for i in core_landmarks:
         x = landmarks[i].x
@@ -268,84 +315,85 @@ def crop_to_ratio(frame, landmarks):
             min_height = y
         if y > max_height:
             max_height = y
-    
-    #Normalize values to frame
+    #Normalize landmark values (0-1) to frame dimensions
     min_width = min_width*frame_width
     max_width = max_width*frame_width
     min_height=min_height*frame_height
     max_height=max_height*frame_height
-
-    tot_width = max_width - min_width   #total width of cropped frame
-    tot_height = max_height - min_height #total height of cropped frame
-    
-    Ratio = width/height # Ratio of height/width of full sized frame
-
-    current_ratio = tot_width / tot_height #Ratio of height/width of cropped frame
-    
-    #Finds the center WRT full frame by adding half of width/height of 
-    #cropped screen to min height/width in full frame dimensions
+    #total width/height of cropped frame
+    tot_width = max_width - min_width   
+    tot_height = max_height - min_height
+    #Height/width ratio of full sized frame
+    Ratio = width/height 
+    #Height/width ratio of cropped frame
+    current_ratio = tot_width / tot_height 
+    #Finds the center WRT full frame by locating the center in the full frame first (W or H/ 2)
+    #then expanding it by minimum width/height of cropped frame
     center_width = min_width + tot_width / 2 
     center_height = min_height + tot_height / 2
-    
     #Change height/width ratio of cropped frame to match that of full frame
     if current_ratio < Ratio:
     # Too narrow: increase width (or crop height)
         adjust_width = (tot_height * Ratio) / 2
         min_width = center_width - adjust_width
         max_width = center_width + adjust_width
-        #print(f"Width adjusted. Min width {min_width}. Max width {max_width}")
     else:
     # Too wide: crop width (or increase height)
         adjust_height = (tot_width / Ratio) / 2
         min_height = center_height - adjust_height
         max_height = center_height + adjust_height
-        #print(f"Height adjusted. Min height {min_height}. Max height {max_height}")
     #adjusts total width/height according to new dimensions
     tot_width = max_width - min_width
     tot_height = max_height - min_height
-    
-
     #adjusts center according to new dimensions
     center_width = min_width + tot_width / 2
     center_height = min_height + tot_height / 2
-
+    #Expand the crop to include more of the frame
     scale_factor = 1.9
-
     #scales total width/height
     new_width = tot_width * scale_factor
     new_height = tot_height * scale_factor
-    
     #Calculates new min/max height/width WRT to full frame by adding 
     #center (in full frame coords) to width/height (in cropped frame coords)
     min_width = center_width - new_width / 2
     max_width = center_width + new_width / 2
     min_height = center_height - new_height / 2
     max_height = center_height + new_height / 2
-
     #Ensures that crop is within bounds (0 to full frame size)
     min_width = max(0, round(min_width))
     max_width = min(frame_width, round(max_width))
     min_height = max(0, round(min_height))
     max_height = min(frame_height, round(max_height))
-
     # Make sure the result isn't an empty crop
     if max_width <= min_width or max_height <= min_height:
     # Return the full frame as fallback
         return 0, frame_width, 0, frame_height
-    
     return round(min_width), round(max_width), round(min_height), round(max_height)
 
-def crop_to_square(frame, landmarks):
-    #Checks if there are landmarkers 
+def crop_to_square(frame, landmarks, direction, maintain_dim):
+    """
+    Crops the frame based on the pose landmarks in a scaled square manner 
 
+    Parameters:
+        frame: The original, uncropped frame
+        landmark: The MediaPipe result containing the pose landmarks
+        direction: The direction  person is starting in the hallway (North or South)
+        maintain_dim: Originally set to full frame dimensions
+
+    Returns:
+        dimension: min_width, max_width, min_height, max_height  --> Dimensions to crop the frame around person w/square   
+        maintain_dim: Updated dimensions to maintain square proportions when the person is nearing the edge of the frame
+    """
+    #Checks if there are landmarkers (if none, return full frame)
+    if landmarks is None:
+        return 0, frame.shape[1], 0, frame.shape[0], maintain_dim #frame.shape[1] = width, frame.shape[0] = height
+    # Get the dimensions of the frame
     frame_height, frame_width = frame.shape[:2] 
-
     # Use only major body parts that are symmetrical and close to the torso
     core_landmarks = [11, 12, 23, 24, 25, 26, 27, 28, 31, 32]  # shoulders, hips, knees, etc.
-
-    min_width = max_width = landmarks[0].x #Initiates width variables to landmark 0
-    min_height = max_height = landmarks[0].y #Initiates height variables to landmark 0
-
+    #Initiates width/height variables to landmark 0
+    min_width = max_width = landmarks[0].x 
+    min_height = max_height = landmarks[0].y
     #Iterates through all landmarks to find max and min: x value = width, y value = height
     for i in core_landmarks:
         x = landmarks[i].x
@@ -358,56 +406,140 @@ def crop_to_square(frame, landmarks):
             min_height = y
         if y > max_height:
             max_height = y
-    
-    #Normalize values to frame
+    #Normalize landmark values (0-1) to frame dimensions
     min_width = min_width*frame_width
     max_width = max_width*frame_width
     min_height=min_height*frame_height
     max_height=max_height*frame_height
-
-    tot_width = max_width - min_width   #total width of cropped frame
-    tot_height = max_height - min_height #total height of cropped frame
-    
-    #Finds the center WRT full frame by adding half of width/height of 
-    #cropped screen to min height/width in full frame dimensions
+    #total width/height of cropped frame
+    tot_width = max_width - min_width  
+    tot_height = max_height - min_height 
+    #Finds the center WRT full frame by locating the center in the full frame first (W or H/ 2)
+    #then expanding it by minimum width/height of cropped frame
     center_width = min_width + tot_width / 2 
     center_height = min_height + tot_height / 2
-    
+    #Adjusts width to be square
     adjust_width = tot_height//2
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
-    tot_width = max_width - min_width   #total width of cropped frame
-
+    tot_width = max_width - min_width   #total width of square frame
+    #Expand the crop to include more of the frame
     scale_factor = 1.8
-
     #scales total width/height
     new_width = tot_width * scale_factor
     new_height = tot_height * scale_factor
-    
-    #Calculates new min/max height/width WRT to full frame by adding 
-    #center (in full frame coords) to width/height (in cropped frame coords)
+    #Calculates new min/max height/width WRT to full frame by starting from the center of the full frame 
+    #expanding by the width/height of the scaled square frame
     min_width = center_width - new_width / 2
     max_width = center_width + new_width / 2
     min_height = center_height - new_height / 2
     max_height = center_height + new_height / 2
-
-    #Ensures that crop is within bounds (0 to full frame size)
-    min_width = max(0, round(min_width))
-    max_width = min(frame_width, round(max_width))
-    min_height = max(0, round(min_height))
-    max_height = min(frame_height, round(max_height))
-
+    #Maintains square dimensions when the person is nearing the edge of the frame
+    if direction  == "South": 
+        #If the maximum height is within 1% of the original height, maintain the dimensions
+        #Since the height is rarely ever equal to the original height, this is a failsafe
+        #if statement should be true when the person is nearing the northmost part of the hallway
+        if abs(max_height - height) / height <= .01:
+            print("Maintaining South Hallway")
+            #max_dim[0] = max_height
+            #maintain_height_max = max_height
+            #maintain_height_min = min_height
+            #maintain_width_max = max_width
+            #maintain_width_min = min_width
+            maintain_dim[1] = height
+            maintain_dim[0] = min_height
+            maintain_dim[3] = max_width
+            maintain_dim[2] = min_width
+        #Ensures the crop of the person is within bounds at the southmost part of the hallway
+        elif min_height < 0:
+            min_height = 0
+        #Ensures the crop of the person is within bounds and square at the northmost part of the hallway
+        elif max_height > height:
+            print("Resetting South Hallway")
+            max_height = maintain_dim[1]
+            min_height = maintain_dim[0]
+            max_width = maintain_dim[3]
+            min_width = maintain_dim[2]
+            
+    #Maintains square dimensions when the person is nearing the edge of the frame
+    if direction  == "North":
+        #If the minimum height is within 5 pixels of the original height, maintain the dimensions
+        if abs(min_height) <= 5:
+            maintain_dim[1] = max_height
+            maintain_dim[0] = 0 
+            maintain_dim[3] = max_width
+            maintain_dim[2] = min_width
+        #Ensures the crop of the person is within bounds at the northmost part of the hallway (repeat of crop_to_Northhall)
+        elif max_height > height:
+            max_height = height
+            min_height = 0
+            adjust_width = (max_height - min_height) //2
+            center_width = width//2
+            min_width = center_width - adjust_width
+            max_width = center_width + adjust_width
+        #Ensures the crop of the person is within bounds and square at the southmost part of the hallway
+        elif min_height < 0:
+            max_height = maintain_dim[1]
+            min_height = maintain_dim[0]
+            max_width = maintain_dim[3]
+            min_width = maintain_dim[2]
     # Make sure the result isn't an empty crop
     if max_width <= min_width or max_height <= min_height:
     # Return the full frame as fallback
-        return 0, frame_width, 0, frame_height
-    
-    return round(min_width), round(max_width), round(min_height), round(max_height)
+        return 0, frame_width, 0, frame_height, maintain_dim
+    return round(min_width), round(max_width), round(min_height), round(max_height), maintain_dim
 
+def smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height, alpha=0.1):
+    """
+    Smooths the crop dimensions using exponential smoothing.
+
+    Parameters:
+        Dimensions: min_width, max_width, min_height, max_height --> cropped frame
+        alpha: Smoothing factor (between 0 and 1)  --> Higher values mean less smoothing
+        smoothed_dim: List to store the smoothed dimensions  --> (Expects [None, None, None, None] initially)
+    Returns:
+        smoothed_dim: [smoothed_min_h, smoothed_max_h, smoothed_min_w, smoothed_max_w] --> Smoothed crop dimensions
+        smoothCrop_dim: min_width, max_width, min_height, max_height --> crop dimensions based on smoothing
+    """
+    #Initializes smoothed_dim to original dimensions if None
+    if smoothed_dim[0] is None:
+        smoothed_dim[0] = min_height
+        smoothed_dim[1] = max_height
+        smoothed_dim[2] = min_width
+        smoothed_dim[3] = max_width
+    # Apply exponential smoothing to the dimensions
+    else:
+        smoothed_dim[0]  = int(alpha * min_height + (1 - alpha) * smoothed_dim[0])
+        smoothed_dim[1] = int(alpha * max_height + (1 - alpha) * smoothed_dim[1])
+        smoothed_dim[2] = int(alpha * min_width + (1 - alpha) * smoothed_dim[2])
+        smoothed_dim[3] = int(alpha * max_width + (1 - alpha) * smoothed_dim[3])
+    
+    min_height, max_height = smoothed_dim[0], smoothed_dim[1] 
+    min_width, max_width = smoothed_dim[2], smoothed_dim[3]   
+    return (smoothed_dim, min_width, max_width, min_height, max_height)
+    
+def landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height, width = width, height = height):
+    """
+    Takes landmarks in cropped frame dimensions and expands them to full frame dimensions.
+
+    Parameters:
+        Dimensions: min_width, max_width, min_height, max_height --> cropped frame
+        Fullframe_Dim :width, height: width and height of the full frame --> defaults to global width and height
+        Landmark: The MediaPipe result containing the pose landmarks 
+
+    Returns:
+        Nothing. The landmarks are mutable and are modified in place.
+    """
+    full_width = width
+    full_height = height
+    for i in range(len(landmarks)):   
+        landmarks[i].x = (landmarks[i].x * (max_width - min_width) + min_width) / full_width
+        landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / full_height
 
 # Main code
-start_frame = 0 # Start frame for the clip
-end_frame = 990 
+start_time = 59
+start_frame = int(start_time * fps) # Start frame for the clip
+end_frame = int(fCount) 
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
 # Read frames until we reach the frame prior to start frame
@@ -419,37 +551,40 @@ min_height = 0
 max_width = width
 min_width = 0
 
-r"""
-# === CSV SETUP (✅ correct position: outside loop) ===
-<<<<<<< HEAD
-csv_path = r"E:\STARS\NS.csv"
+maintain_dim = [0,height,0,width] # Initializes maintain dimensions
+smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [smoothed_min_h, smoothed_max_h, smoothed_min_w, smoothed_max_w]
+"""
+csv_path = r"E:\STARS\plots\RETRY_06_18_2025_Vid_Data_Subject_1-selected_Sub_1_Run_1_6-18-2025_11-45-46_AM.csv"
 with open(csv_path, mode='w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow([
-        "Frame", "Timestamp_ms",
-        "RightHeel Visbility", "LeftHeel Visbility",
-        "RightHeel Presence", "LeftHeel Presence"
-    ])
-=======
-#csv_path = r"E:\STARS\fullframewithsquareSN.csv"
-#with open(csv_path, mode='w', newline='') as file:
-#    writer = csv.writer(file)
-#    writer.writerow([
-#        "Frame", "LeftHeel_Visibility",
-#        "RightHeel_Visibility", "LeftHeel_Presence",
-#        "RightHeel_Presence"
-#    ])
->>>>>>> 3f55b61 (Working on loading cropped data)
-#Opens 
+      writer = csv.writer(file)
+      writer.writerow([
+        #"Frame", 
+        "Hours","Minutes", "Seconds", "Run-Time_Second",
+        "LeftHeel_Distance", "RightHeel_Distance" , 
+        "LeftToe_Distance" , "RightToe_Distance",
+    ]) 
 """
 
+
+# === Clip Setup ===
+#clipRunTime_s = 0
+#clipStartTime_s = 55
+#clipStartFrame = 0
+#clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
+
 # Initialize smoothing variables
-smoothed_min_w, smoothed_max_w = None, None
-smoothed_min_h, smoothed_max_h = None, None
+#smoothed_min_w, smoothed_max_w = 0, width
+#smoothed_min_h, smoothed_max_h = 0, height
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 
+direction  = "None" #Initial direction 
+
+i = 0 # Frame index for the loop
 #Read through the specified frame count
 for frame_Index in range(start_frame, end_frame): 
+#for i in range(clipRunFrames):
+    #frame_timestamp_ms = int((start_frame + i) * frameTime_ms)
+    #i = i + 1 # Increment the frame index
     success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
     if not success: # If the frame was not read successfully, break the loop
         print("Failed to read frame")
@@ -466,99 +601,91 @@ for frame_Index in range(start_frame, end_frame):
             final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
             final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
             landmarks = result.pose_landmarks[0]
-            #drawLandmark_circle(final_frame, landmarks[29], [255,0,0]) # Draw green landmarks before transition
-            drawLandmark_circle(final_frameCrop, landmarks[29], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [255,0,0]) # Draw green landmarks before transition
-            #drawLandmark_circle(final_frame, landmarks[30], [255,0,0]) # Draw green landmarks before transition
-            drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0]) # Draw green landmarks before transition
-            for i in range(len(landmarks)):   
-                landmarks[i].x = (landmarks[i].x * (max_width - min_width) + min_width) / width
-                landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / height
-            drawLandmark_circle(final_frame, landmarks[29], [0,255,0]) # Draw green landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[29],landmarks[23], [0,255,0]) # Draw blue landmarks after transition
-            #drawLandmark_line(raw_frame, landmarks[30], landmarks[24], [0,255,0]) # Draw green landmarks after transition
-            drawLandmark_circle(final_frame, landmarks[30], [0,255,0]) # Draw blue landmarks after transition
-            min_width, max_width, min_height, max_height = crop_to_square(raw_frame, landmarks) #, landmarks
-
-            # Apply exponential smoothing
-            if smoothed_min_w is None:
-                smoothed_min_w, smoothed_max_w = min_width, max_width
-                smoothed_min_h, smoothed_max_h = min_height, max_height
-            else:
-                smoothed_min_w = int(alpha * min_width + (1 - alpha) * smoothed_min_w)
-                smoothed_max_w = int(alpha * max_width + (1 - alpha) * smoothed_max_w)
-                smoothed_min_h = int(alpha * min_height + (1 - alpha) * smoothed_min_h)
-                smoothed_max_h = int(alpha * max_height + (1 - alpha) * smoothed_max_h)
-
-            min_width, max_width = smoothed_min_w, smoothed_max_w
-            min_height, max_height = smoothed_min_h, smoothed_max_h
-            #min_width, max_width, min_height, max_height = crop_with_padding(raw_frame, landmarks) #, landmarks
-            right_heel_visibility = landmarks[30].visibility
-            left_heel_visibility = landmarks[29].visibility
-            right_heel_presence = landmarks[30].presence
-            left_heel_presence = landmarks[29].presence
+            drawLandmark_circle(final_frameCrop, landmarks[29], [0,255,255],10) # Draw green landmarks before transition
+            drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
+            landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
+            circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
+            line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
+            for i in circle_landmarks:
+                drawLandmark_circle(final_frame,landmarks[i],[0,255,0],5)
+            for i in range(0, len(line_landmarks), 2):
+                drawLandmark_line(final_frame, landmarks[line_landmarks[i]], landmarks[line_landmarks[i + 1]], [0, 255, 0])
+            drawLandmark_circle(final_frame,landmarks[0],[0,255,0],15)
+            min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
+            smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
             resizedCropFrame = cv2.resize(final_frameCrop, squareDisplayRez) # Resize the frame for displayd 
             cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
             resizedFrame = cv2.resize(final_frame, displayRez) # Resize the frame for displayd
             cv2.imshow("Frame", resizedFrame) #displays frame
-            key1 = cv2.waitKey(1) # Wait for a key press
-            if key1 == ord('q') & 0xFF: exit()
+            
+            # === Heel Y values (normalized and pixel)
+            left_heel_y_norm = landmarks[29].y
+            right_heel_y_norm = landmarks[30].y
+            left_heel_y_px = left_heel_y_norm * height
+            right_heel_y_px = right_heel_y_norm * height
+            # === Distances using your function
+            left_distHeel = find_dist_from_y(left_heel_y_px, debug=True)
+            right_distHeel = find_dist_from_y(right_heel_y_px, debug=True)
+
+             # === Toe Y values (normalized and pixel)
+            left_toe_y_norm = landmarks[31].y
+            right_toe_y_norm = landmarks[32].y
+            left_toe_y_px = left_toe_y_norm * height
+            right_toe_y_px = right_toe_y_norm * height
+            # === Distances using your function
+            left_distToe = find_dist_from_y(left_toe_y_px, debug=True)
+            right_distToe = find_dist_from_y(right_toe_y_px, debug=True)
+            timestamp = getDateTime(raw_frame) # Get the timestamp from the frame
+            time_tracker = timeWith_ms(frameTime_ms)
+            timestamp_withms = time_tracker.calc_ms(timestamp, frame_Index, display=True) # Get the timestamp with milliseconds
+            """
+            with open(csv_path, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([
+                #frame_Index,
+                timestamp,
+                adjusted_time_ms/ 1000,  # Convert to seconds
+                left_distHeel,
+                right_distHeel,
+                left_distToe,
+                right_distToe
+            ])
+        """
+    # === Save to CSV (✅ append only)
+    # === Save to CSV (✅ append only)
+#            if clip_start <= frame_Index < clip_end:
+#                if out_full is None:
+#                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
+
+#                out_full.write(final_frame)
+
         else:
-            #min_width, max_width, min_height, max_height = crop_to_Southhall(raw_frame, min_width) #, landmarks
-            if frame_Index % 2 ==0:
-                min_width, max_width, min_height, max_height = crop_to_Southhall() #, landmarks
+            if i % 2 ==0: #if frame_Index % 2 ==0:
+                min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
             else:
-                min_width, max_width, min_height, max_height = crop_to_Northhall() #, landmarks
-            right_heel_visibility = 0
-            left_heel_visibility = 0
-            right_heel_presence = 0
-            left_heel_presence = 0
-"""
+                min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
+#            right_heel_visibility = 0
+#            left_heel_visibility = 0
+#            right_heel_presence = 0
+#            left_heel_presence = 0
+        key1 = cv2.waitKey(1) # Wait for a key press
+        if key1 == ord('q') & 0xFF: exit()
     # === Save to CSV (✅ append only)
     # === Save to CSV (✅ append only)
-<<<<<<< HEAD
-    with open(csv_path, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([
-        frame_Index,
-        adjusted_time_ms,
-        right_heel_visibility,
-        left_heel_visibility,
-        right_heel_presence, 
-        left_heel_presence
-        ])
-
-"""
-
-      
-#    if clip_start <= frame_Index < clip_end:
- #       if out_full is None:
-#            out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
-#            out_crop = cv2.VideoWriter(os.path.join(output_dir, "crop_frame_clip.avi"), fourcc, fps, (final_frameCrop.shape[1], final_frameCrop.shape[0]))
-
- #       out_full.write(final_frame)
- #       out_crop.write(final_frameCrop)
-  
-# Release writers after loop
-# if out_full:
-#     out_full.release()
-# if out_crop:
-#     out_crop.release()
-=======
     #with open(csv_path, mode='a', newline='') as file:
-    #    writer = csv.writer(file)
-    #    writer.writerow([
-    #    frame_Index,
-    #    left_heel_visibility,
-    #    right_heel_visibility,
-    #    left_heel_presence,
-    #    right_heel_presence
-    #    ])
+#        writer = csv.writer(file)
+#        writer.writerow([
+#        frame_Index,
+#        adjusted_time_ms,
+#        right_heel_visibility,
+#        left_heel_visibility,
+#        right_heel_presence, 
+#        left_heel_presence
+#        ])
+    
+# Release writers after loop
+#if out_full:
+#     out_full.release()
+#if out_crop:
+#    out_crop.release()
 
-    resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-    cv2.imshow("Frame", resizedFrame) #displays frame
-    key1 = cv2.waitKey(1) # Wait for a key press
-    key2 = 0
-    if key1 == ord('q') or key2 == ord('q') & 0xFF: exit()
->>>>>>> 3f55b61 (Working on loading cropped data)
