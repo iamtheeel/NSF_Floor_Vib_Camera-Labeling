@@ -340,3 +340,4 @@ for i, trial in enumerate(trialList): # Cycle through the trials
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True)
     plt.show() # Open the plot(s)
+    #wtf
