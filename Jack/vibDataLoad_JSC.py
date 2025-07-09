@@ -303,21 +303,19 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
     #Plot before downSam
-    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=fileDataCapRate_hz) # -1 if the data is already with the trial
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", extraTitle="Full Res")
 
-    if downSampleRate <= 1: 
-        dataCapRate_hz = fileDataCapRate_hz
-    else:
+    if downSampleRate > 1: 
         dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, fileDataCapRate_hz, downSampleRate) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     if oldData == False: print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
-    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=dataCapRate_hz) # -1 if the data is already with the trial
     #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
     print(f"Data len: {dataBlock_sliced.shape}")
 
@@ -325,11 +323,11 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     #timeYRange = 0.01
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
-    csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+    #csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
 
     freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
-                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True, save="original")
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True)
     plt.show() # Open the plot(s)
