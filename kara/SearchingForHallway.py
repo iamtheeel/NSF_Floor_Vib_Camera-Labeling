@@ -16,6 +16,7 @@ from mediapipe.tasks.python import vision
 import sys 
 import os
 
+import datetime
 # === Fix import path to reach distance_position.py ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from distance_position import find_dist_from_y  # ✅ Import your custom function
@@ -298,12 +299,12 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
     
 def blur_person_cropFrame(cropped_frame, result):
     """
-    Blurs only the person within a cropped frame (newDim_Frame),
+    Blurs only the person within a cropped frame,
     keeping the background untouched.
 
     Parameters:
         cropped_frame: The cropped portion of the original frame
-        result: The MediaPipe result containing the segmentation mask
+        result: The MediaPipe result 
 
     Returns:
         final_cropped_frame: The cropped frame with the person blurred
@@ -488,11 +489,6 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
         #if statement should be true when the person is nearing the northmost part of the hallway
         if abs(max_height - height) / height <= .01:
             print("Maintaining South Hallway")
-            #max_dim[0] = max_height
-            #maintain_height_max = max_height
-            #maintain_height_min = min_height
-            #maintain_width_max = max_width
-            #maintain_width_min = min_width
             maintain_dim[1] = height
             maintain_dim[0] = min_height
             maintain_dim[3] = max_width
@@ -583,11 +579,26 @@ def landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_hei
         landmarks[i].x = (landmarks[i].x * (max_width - min_width) + min_width) / full_width
         landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / full_height
 
+def seconds_sinceMidnight(timeWith_ms_class,raw_frame):
+    #Get seconds from midnight from the frame timestamp
+    timestamp = getDateTime(raw_frame) # Get the timestamp from the frame
+    HHMMSS, AM_PM = timestamp.split('.') # Split the timestamp into time and AM/PM
+    timestamp_withms = time_tracker.calc_ms(HHMMSS, frame_Index) # Get the timestamp with milliseconds
+    hours, minutes, seconds = timestamp_withms.split(':') # Split the timestamp into hours, minutes, seconds
+    seconds, milliseconds = seconds.split('.') # Split seconds into seconds and milliseconds
+    if AM_PM == "PM" and hours != "12": # Convert PM to 24-hour format
+        hours = str(int(hours) + 12)
+    elif AM_PM == "AM" and hours == "12": # Convert 12 AM to 00 hours
+        hours = "00"
+    total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000 # Convert to total seconds
+    return total_seconds # Return the total seconds since midnight
+
 # Main code
-start_time = 0
+start_time = 1
 start_frame = int(start_time * fps) # Start frame for the clip
-end_frame = int(fCount) 
-print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
+end_time = 10 # End time for the clip in seconds
+end_frame = int(end_time * fps) # End frame for the clip
+print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0dd
 
 # Read frames until we reach the frame prior to start frame
 videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, start_frame-1)
@@ -614,18 +625,13 @@ smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [sm
 
 
 time_tracker = timeWith_ms(frameTime_ms)
-# === Clip Setup ===
-#clipRunTime_s = 0
-#clipStartTime_s = 55
-#clipStartFrame = 0
-#clipRunFrames = int((fCount - clipStartFrame) if clipRunTime_s == 0 else (clipRunTime_s * fps))
 
 # Initialize smoothing variables
-#smoothed_min_w, smoothed_max_w = 0, width
-#smoothed_min_h, smoothed_max_h = 0, height
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
+#Initialize direction 
+direction  = "None" 
 
-direction  = "None" #Initial direction 
+all_frames_withDistance = [] # List to store all frames
 
 #Read through the specified frame count
 for frame_Index in range(start_frame, end_frame): 
@@ -639,8 +645,8 @@ for frame_Index in range(start_frame, end_frame):
     newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and
     #Shrinking it down to dimensions
     #Changes dimensions before finding landmarks
-    drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
-    if newDim_Frame is not None: #Failsafe "if newDim_Frame is not None:"
+    #drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
+    if newDim_Frame is not None: #Failsafe 
         good = False
         good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
         #result is the landmarks
@@ -651,9 +657,8 @@ for frame_Index in range(start_frame, end_frame):
             #drawLandmark_circle(final_frameCrop, landmarks[29], [0,255,255],10) # Draw green landmarks before transition
             #drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
             landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
-            circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
-            line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
-            
+            #circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
+            #line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
             #for i in circle_landmarks:
             #    drawLandmark_circle(final_frame,landmarks[i],[0,255,0],5)
             #for i in range(0, len(line_landmarks), 2):
@@ -684,18 +689,12 @@ for frame_Index in range(start_frame, end_frame):
             left_distToe = find_dist_from_y(left_toe_y_px)
             right_distToe = find_dist_from_y(right_toe_y_px)
 
-            #Get seconds from midnight from the frame timestamp
-            timestamp = getDateTime(raw_frame) # Get the timestamp from the frame
-            HHMMSS, AM_PM = timestamp.split('.') # Split the timestamp into time and AM/PM
-            timestamp_withms = time_tracker.calc_ms(HHMMSS, frame_Index) # Get the timestamp with milliseconds
-            hours, minutes, seconds = timestamp_withms.split(':') # Split the timestamp into hours, minutes, seconds
-            seconds, milliseconds = seconds.split('.') # Split seconds into seconds and milliseconds
-            if AM_PM == "PM" and hours != "12": # Convert PM to 24-hour format
-                hours = str(int(hours) + 12)
-            elif AM_PM == "AM" and hours == "12": # Convert 12 AM to 00 hours
-                hours = "00"
-            total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000 # Convert to total seconds
-                       
+            total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+            all_frames_withDistance.append({
+            "frame": newDim_Frame,
+            "right_heel": right_distHeel,
+            "left_heel": left_distHeel
+            })
 #            with open(csv_path, mode='a', newline='') as file:
 #                writer = csv.writer(file)
 #                writer.writerow([
@@ -715,19 +714,62 @@ for frame_Index in range(start_frame, end_frame):
 #                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
 
 #                out_full.write(final_frame)
-
         else:
             if frame_Index % 2 ==0:
                 min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
             else:
                 min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez)
-            cv2.imshow("Frame to send model", resizedCropFrame)
-            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-            cv2.imshow("Frame", resizedFrame) #displays frame
+#            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez)
+#            cv2.imshow("Frame to send model", resizedCropFrame)
+#            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+#            cv2.imshow("Frame", resizedFrame) #displays frame
   
         key1 = cv2.waitKey(1) # Wait for a key press
         if key1 == ord('q') & 0xFF: exit()
+
+frame_index = 0
+play_mode = False  # False = manual step-through, True = autoplay
+frame_delay = 30   # ms between frames in play mode
+
+while 0 <= frame_index < len(all_frames_withDistance):
+
+    # === Overlay info (frame number and time)
+#    timestamp = str(datetime.timedelta(seconds=int(frame_index / videoOpbject.get(cv2.CAP_PROP_FPS))))
+#    cv2.putText(frame, f"Frame: {frame_index}/{len(all_frames)-1}", (10, 30),
+#                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+#    cv2.putText(frame, f"Time: {timestamp}", (10, 70),
+#                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+    # === Your processing function could go here
+    # Example: landmarks, blurring, cropping, etc.
+    entry = all_frames_withDistance[frame_index]
+    resizedframe = cv2.resize(entry["frame"], displayRez)
+    cv2.imshow("Video Playback", resizedframe)
+    print(f"Left heel distance: {entry["left_heel"]}, Right heel distance: {entry["left_heel"]}")
+    if play_mode:
+        key = cv2.waitKey(frame_delay) & 0xFF
+    else:
+        key = cv2.waitKey(0) & 0xFF  # Wait indefinitely in manual mode
+
+    if key == ord('q'):
+        break
+    elif key == 77 or key == ord('d'):  # → or 'd'
+        frame_index += 1
+    elif key == 81 or key == ord('g'):  # ← or 'a'
+        frame_index -= 1
+    elif key == ord('p'):  # Toggle play/pause
+        play_mode = not play_mode
+    elif key == ord('r'):  # Rewind to beginning
+        frame_index = 0
+    elif key == ord('f'):  # Jump forward 10 frames
+        frame_index = min(frame_index + 10, len(all_frames_withDistance) - 1)
+    elif key == ord('b'):  # Jump back 10 frames
+        frame_index = max(frame_index - 10, 0)
+    else:
+        if play_mode:
+            frame_index += 1  # Autoplay advances automatically
+
+cv2.destroyAllWindows()
 
 # Release writers after loop
 #if out_full:
