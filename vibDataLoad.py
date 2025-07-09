@@ -11,17 +11,17 @@
 dataTimeRange_s = [0,0] # [0 0] for full dataset
 dataFreqRange_hz = [0,0] # will want this later
 
-oldData = True
-dir = '/home/josh/Documents/MIC/shake/TestData/Test_2/data'
-dataFile = 'walking_hallway_single_person_APDM_001.hdf5'
-#oldData = False
+#oldData = True
+#dir = '/home/josh/Documents/MIC/shake/TestData/Test_2/data'
+#dataFile = 'walking_hallway_single_person_APDM_001.hdf5'
+oldData = False
 #dir = 'StudentData/25_06_03/Subject_1'
 #dataFile = "data/Yoko_s3_3.hdf5"
 #dataFile = "Kera_2.hdf5"
 #dir = 'StudentData/25_06_13/'
 #dataFile = "triggerTime_1.hdf5"
-#dir = 'StudentData/25_06_18/'
-#dataFile = "Yoko_s3_Run1.hdf5"
+dir = 'StudentData/25_06_18/'
+dataFile = "Yoko_s3_Run1.hdf5"
 #dir = 'StudentData/25_07_07/'
 #dataFile = 'timeTest_4.hdf5'
 
@@ -81,19 +81,19 @@ def loadPeramiters(dataFile):
         filePerams = h5file['experiment/general_parameters'][:]
 
     #Extract the data capture info from the file
-    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs', asStr=oldData)
+    fs_hz, dataCapUnits = get_peram(filePerams, 'fs', asStr=oldData)
     recordLen_s, _ = get_peram(filePerams, 'record_length', asStr=oldData)
     preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
 
     print(filePerams.dtype.names)   # Show the peramiter field names
     print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
 
-    print(f"DataC Cap Rate: {type(dataCapRate_hz)}")
-    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
+    print(f"DataC Cap Rate: {type(fs_hz)}")
+    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = fs_hz/2
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
 
 
-    return dataCapRate_hz, recordLen_s, preTrigger_s, nTrials
+    return fs_hz, recordLen_s, preTrigger_s, nTrials
 
 def loadData(dataFile, trial=-1):
     """
@@ -152,7 +152,7 @@ def loadData(dataFile, trial=-1):
     return dataFromFile, triggerTimes
 
 ## Data slicers
-def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
+def sliceTheData(dataBlock:np, chList, timeRange_sec, dataCapRate, trial=-1):
     """
     Cuts the data by:
         ch
@@ -170,9 +170,9 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     print(f"ChList index: {chList_zeroIndexed}")
 
     # The time range
-    dataPoint_from = int(timeRange_sec[0]*dataCapRate_hz)
-    dataPoint_to = int(timeRange_sec[1]*dataCapRate_hz)
-    print(f"Data Point Range: {dataPoint_from}:{dataPoint_to} at {dataCapRate_hz} hz")
+    dataPoint_from = int(timeRange_sec[0]*dataCapRate)
+    dataPoint_to = int(timeRange_sec[1]*dataCapRate)
+    #print(f"Data Point Range: {dataPoint_from}:{dataPoint_to} at {dataCapRate} hz")
 
     # Ruturn the cut up data
     if trial > 0:
@@ -183,7 +183,7 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
 
 ## Data Plottters
 def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
-                   domainToPlot:str="time", logX=False, logY=False, title="", save=""):
+                   domainToPlot:str="time", logX=False, logY=False, extraTitle=""):
     """
     Plots the data in 2 axis (time or frequency domain)
 
@@ -203,7 +203,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
         xAxis_str = f"Frequency"
         xAxisUnits_str = "(Hz)"
-    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}{title}, Acceleration (g)"
+    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}, Acceleration (g) {extraTitle}"
 
     fig, axs = plt.subplots(len(plotChList)) #Make the subplots for how many ch you want
     fig.suptitle(title_str)
@@ -215,10 +215,10 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         # Plot the ch data
         timeD_data = dataBlockToPlot[i,:]  #Note: Numpy will alow negitive indexing (-1 = the last row)
         if domainToPlot == "time":
-            start_time_sec = (triggerTime - triggerTime.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
-            xAxis_data = start_time_sec + np.arange(numTimePts) / dataCapRate_hz
-            xAxis_str = f"Clock Time"
-            xAxisUnits_str = "(s since midnight)"
+            #start_time_sec = (triggerTime - triggerTime.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+            #xAxis_data = start_time_sec + np.arange(numTimePts) / dataRate
+            #xAxis_str = f"Clock Time"
+            #xAxisUnits_str = "(s since midnight)"
             yAxis_data = timeD_data
         if domainToPlot == "freq":
             # Calculate the fft
@@ -293,6 +293,7 @@ def csvOutput(plotChList, xAxis_data, dataBlockToSave):
 #### Do the stuff
 # Load the data 
 fileDataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dirFile) # get the peramiters
+dataCapRate_hz = fileDataCapRate_hz
 print(f"Data cap rate: {fileDataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
 downSampleRate = 4
@@ -300,8 +301,8 @@ trialList = [0, 1, 2, 7]
 #trialList = [7]
 #fileDataCapRate_hz = 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 trialList = [7]
-for trial in range(nTrials): # Cycle through the trials
-#for i, trial in enumerate(trialList): # Cycle through the trials
+#for trial in range(nTrials): # Cycle through the trials
+for i, trial in enumerate(trialList): # Cycle through the trials
     csv_path = r"!!!!insert path here!!!!"
     csv_filename = f"trial_{trial}_graph_vib_output.csv"
     csv_file = f"{csv_path}/{csv_filename}"
@@ -311,21 +312,19 @@ for trial in range(nTrials): # Cycle through the trials
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
     #Plot before downSam
-    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=fileDataCapRate_hz) # -1 if the data is already with the trial
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", extraTitle="Full Res")
 
-    if downSampleRate <= 1: 
-        dataCapRate_hz = fileDataCapRate_hz
-    else:
+    if downSampleRate > 1: 
         dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, fileDataCapRate_hz, downSampleRate) #4x downsample... may need fudging, have not tryed in minCaseEx
 
     if oldData == False: print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
     print(f"max: {np.max(dataBlock_numpy[3,5])}, mean: {np.mean(dataBlock_numpy)}")
     # Get the parts of the data we are interested in:
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
-    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=dataCapRate_hz) # -1 if the data is already with the trial
     #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
     print(f"Data len: {dataBlock_sliced.shape}")
 
@@ -333,11 +332,11 @@ for trial in range(nTrials): # Cycle through the trials
     #timeYRange = 0.01
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
-    csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+    #csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
 
     freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
-                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True, save="original")
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=True)
     plt.show() # Open the plot(s)
