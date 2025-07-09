@@ -17,7 +17,7 @@ import sys
 import os
 
 # === Fix import path to reach distance_position.py ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '...')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from distance_position import find_dist_from_y  # ✅ Import your custom function
 
 from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
@@ -30,16 +30,62 @@ from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detec
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
+#North_South Runs
+#Kara's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+#Yoko's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
+#Jack's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+#Bad Run:
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
 
-#Video File
-#dir = r"E:\STARS"
-#file = r"06_18_2025_Vid_Data\subject_2-selected\sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+#South_North Runs
+#Kara's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+#Yoko's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
+#Jack's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
+#Bad Run:
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 
-#dir = r"E:\STARS"
-#file = r"06_18_2025_Vid_Data\Subject_1-selected\Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+#Kara's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
+dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+#Jack's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
+#Yoko's video file
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected
+#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf""
 
-dir = r"E:\STARS"
-file = r"06_18_2025_Vid_Data\Subject_1-selected\Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -116,7 +162,8 @@ def getDateTime(frame):
     try:
         #date_str = data['text'][4]
         time_str = data['text'][5]
-        return f"{time_str}"
+        AM_PM = data['text'][6]
+        return f"{time_str}.{AM_PM}"
     except:
         return "OCR Error"
     
@@ -424,7 +471,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
     max_width = center_width + adjust_width
     tot_width = max_width - min_width   #total width of square frame
     #Expand the crop to include more of the frame
-    scale_factor = 1.8
+    scale_factor = 1.6
     #scales total width/height
     new_width = tot_width * scale_factor
     new_height = tot_height * scale_factor
@@ -537,7 +584,7 @@ def landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_hei
         landmarks[i].y = (landmarks[i].y * (max_height - min_height) + min_height) / full_height
 
 # Main code
-start_time = 59
+start_time = 0
 start_frame = int(start_time * fps) # Start frame for the clip
 end_frame = int(fCount) 
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
@@ -553,19 +600,20 @@ min_width = 0
 
 maintain_dim = [0,height,0,width] # Initializes maintain dimensions
 smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [smoothed_min_h, smoothed_max_h, smoothed_min_w, smoothed_max_w]
-"""
-csv_path = r"E:\STARS\plots\RETRY_06_18_2025_Vid_Data_Subject_1-selected_Sub_1_Run_1_6-18-2025_11-45-46_AM.csv"
-with open(csv_path, mode='w', newline='') as file:
-      writer = csv.writer(file)
-      writer.writerow([
-        #"Frame", 
-        "Hours","Minutes", "Seconds", "Run-Time_Second",
-        "LeftHeel_Distance", "RightHeel_Distance" , 
-        "LeftToe_Distance" , "RightToe_Distance",
-    ]) 
-"""
 
 
+#csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
+#with open(csv_path, mode='w', newline='') as file:
+#      writer = csv.writer(file)
+#      writer.writerow([
+#        #"Frame", 
+#        "Time", "Seconds_Mid",
+#        "LeftHeel_Dist", "RightHeel_Dist" , 
+#        "LeftToe_Dist" , "RightToe_Dist",
+#    ]) 
+
+
+time_tracker = timeWith_ms(frameTime_ms)
 # === Clip Setup ===
 #clipRunTime_s = 0
 #clipStartTime_s = 55
@@ -579,7 +627,6 @@ alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 
 direction  = "None" #Initial direction 
 
-i = 0 # Frame index for the loop
 #Read through the specified frame count
 for frame_Index in range(start_frame, end_frame): 
 #for i in range(clipRunFrames):
@@ -598,24 +645,25 @@ for frame_Index in range(start_frame, end_frame):
         good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
         #result is the landmarks
         if good and result is not None:
-            final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
-            final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
+            #final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
+            #final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
             landmarks = result.pose_landmarks[0]
-            drawLandmark_circle(final_frameCrop, landmarks[29], [0,255,255],10) # Draw green landmarks before transition
-            drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
+            #drawLandmark_circle(final_frameCrop, landmarks[29], [0,255,255],10) # Draw green landmarks before transition
+            #drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
             landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
             circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
             line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
-            for i in circle_landmarks:
-                drawLandmark_circle(final_frame,landmarks[i],[0,255,0],5)
-            for i in range(0, len(line_landmarks), 2):
-                drawLandmark_line(final_frame, landmarks[line_landmarks[i]], landmarks[line_landmarks[i + 1]], [0, 255, 0])
-            drawLandmark_circle(final_frame,landmarks[0],[0,255,0],15)
+            
+            #for i in circle_landmarks:
+            #    drawLandmark_circle(final_frame,landmarks[i],[0,255,0],5)
+            #for i in range(0, len(line_landmarks), 2):
+            #    drawLandmark_line(final_frame, landmarks[line_landmarks[i]], landmarks[line_landmarks[i + 1]], [0, 255, 0])
+            #drawLandmark_circle(final_frame,landmarks[0],[0,255,0],15)
             min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
             smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
-            resizedCropFrame = cv2.resize(final_frameCrop, squareDisplayRez) # Resize the frame for displayd 
+            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
             cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
-            resizedFrame = cv2.resize(final_frame, displayRez) # Resize the frame for displayd
+            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
             cv2.imshow("Frame", resizedFrame) #displays frame
             
             # === Heel Y values (normalized and pixel)
@@ -624,8 +672,8 @@ for frame_Index in range(start_frame, end_frame):
             left_heel_y_px = left_heel_y_norm * height
             right_heel_y_px = right_heel_y_norm * height
             # === Distances using your function
-            left_distHeel = find_dist_from_y(left_heel_y_px, debug=True)
-            right_distHeel = find_dist_from_y(right_heel_y_px, debug=True)
+            left_distHeel = find_dist_from_y(left_heel_y_px)
+            right_distHeel = find_dist_from_y(right_heel_y_px)
 
              # === Toe Y values (normalized and pixel)
             left_toe_y_norm = landmarks[31].y
@@ -633,24 +681,33 @@ for frame_Index in range(start_frame, end_frame):
             left_toe_y_px = left_toe_y_norm * height
             right_toe_y_px = right_toe_y_norm * height
             # === Distances using your function
-            left_distToe = find_dist_from_y(left_toe_y_px, debug=True)
-            right_distToe = find_dist_from_y(right_toe_y_px, debug=True)
+            left_distToe = find_dist_from_y(left_toe_y_px)
+            right_distToe = find_dist_from_y(right_toe_y_px)
+
+            #Get seconds from midnight from the frame timestamp
             timestamp = getDateTime(raw_frame) # Get the timestamp from the frame
-            time_tracker = timeWith_ms(frameTime_ms)
-            timestamp_withms = time_tracker.calc_ms(timestamp, frame_Index, display=True) # Get the timestamp with milliseconds
-            """
-            with open(csv_path, mode='a', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow([
-                #frame_Index,
-                timestamp,
-                adjusted_time_ms/ 1000,  # Convert to seconds
-                left_distHeel,
-                right_distHeel,
-                left_distToe,
-                right_distToe
-            ])
-        """
+            HHMMSS, AM_PM = timestamp.split('.') # Split the timestamp into time and AM/PM
+            timestamp_withms = time_tracker.calc_ms(HHMMSS, frame_Index) # Get the timestamp with milliseconds
+            hours, minutes, seconds = timestamp_withms.split(':') # Split the timestamp into hours, minutes, seconds
+            seconds, milliseconds = seconds.split('.') # Split seconds into seconds and milliseconds
+            if AM_PM == "PM" and hours != "12": # Convert PM to 24-hour format
+                hours = str(int(hours) + 12)
+            elif AM_PM == "AM" and hours == "12": # Convert 12 AM to 00 hours
+                hours = "00"
+            total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000 # Convert to total seconds
+                       
+#            with open(csv_path, mode='a', newline='') as file:
+#                writer = csv.writer(file)
+#                writer.writerow([
+#                #frame_Index,
+#                timestamp,
+#                total_seconds,  # Convert to seconds
+#                left_distHeel,
+#                right_distHeel,
+#                left_distToe,
+#                right_distToe
+#            ])
+            
     # === Save to CSV (✅ append only)
     # === Save to CSV (✅ append only)
 #            if clip_start <= frame_Index < clip_end:
@@ -660,29 +717,18 @@ for frame_Index in range(start_frame, end_frame):
 #                out_full.write(final_frame)
 
         else:
-            if i % 2 ==0: #if frame_Index % 2 ==0:
+            if frame_Index % 2 ==0:
                 min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
             else:
                 min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-#            right_heel_visibility = 0
-#            left_heel_visibility = 0
-#            right_heel_presence = 0
-#            left_heel_presence = 0
+            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez)
+            cv2.imshow("Frame to send model", resizedCropFrame)
+            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+            cv2.imshow("Frame", resizedFrame) #displays frame
+  
         key1 = cv2.waitKey(1) # Wait for a key press
         if key1 == ord('q') & 0xFF: exit()
-    # === Save to CSV (✅ append only)
-    # === Save to CSV (✅ append only)
-    #with open(csv_path, mode='a', newline='') as file:
-#        writer = csv.writer(file)
-#        writer.writerow([
-#        frame_Index,
-#        adjusted_time_ms,
-#        right_heel_visibility,
-#        left_heel_visibility,
-#        right_heel_presence, 
-#        left_heel_presence
-#        ])
-    
+
 # Release writers after loop
 #if out_full:
 #     out_full.release()
