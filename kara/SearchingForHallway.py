@@ -178,6 +178,13 @@ def drawLandmark_circle(frame, landmark, color, radius):
     #print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")q
     cv2.circle(frame, center, radius, color, thickness) # Draw a circle at the landmark position
 
+def addLandmark_text(frame, landmark, text, color):
+    frame_height, frame_width = frame.shape[:2]
+    #color = [255, 0, 0] #Circle will be red
+    center = int(landmark.x*frame_width), int(landmark.y*frame_height) #place center of the circle at the landmark position
+    #print(f"x: {int(landmark.x*w)}, y: {int(landmark.y*h)}")
+    cv2.putText(frame, text, center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
 def drawLandmark_line(frame, feet, hips, color):
     #color = [255, 0, 0] # Line will be red
     pt1_ft = (int(feet.x*width),int(feet.y*height)) #First point is on the feet
@@ -632,6 +639,7 @@ alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "None" 
 
 all_frames_withDistance = [] # List to store all frames
+i = 0
 
 #Read through the specified frame count
 for frame_Index in range(start_frame, end_frame): 
@@ -654,7 +662,9 @@ for frame_Index in range(start_frame, end_frame):
             #final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
             #final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
             landmarks = result.pose_landmarks[0]
-            #drawLandmark_circle(final_frameCrop, landmarks[29], [0,255,255],10) # Draw green landmarks before transition
+            cropped_landLeft = landmarks[29]  # Left heel
+            cropped_landRight = landmarks[30]  # Right heel
+            drawLandmark_circle(newDim_Frame, landmarks[29], [0,255,255],5) # Draw green landmarks before transition
             #drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
             landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
             #circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
@@ -679,7 +689,7 @@ for frame_Index in range(start_frame, end_frame):
             # === Distances using your function
             left_distHeel = find_dist_from_y(left_heel_y_px)
             right_distHeel = find_dist_from_y(right_heel_y_px)
-
+        
              # === Toe Y values (normalized and pixel)
             left_toe_y_norm = landmarks[31].y
             right_toe_y_norm = landmarks[32].y
@@ -688,13 +698,17 @@ for frame_Index in range(start_frame, end_frame):
             # === Distances using your function
             left_distToe = find_dist_from_y(left_toe_y_px)
             right_distToe = find_dist_from_y(right_toe_y_px)
-
             total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
             all_frames_withDistance.append({
             "frame": newDim_Frame,
             "right_heel": right_distHeel,
             "left_heel": left_distHeel
             })
+            newDim_H, newDim_W = newDim_Frame.shape[:2]
+            arrFrame = all_frames_withDistance[i]
+
+            cv2.putText(arrFrame["frame"], str(arrFrame["left_heel"]), (round(cropped_landLeft.x * newDim_W), round(cropped_landLeft.y * newDim_H)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            i = i + 1 # Increment the frame index
 #            with open(csv_path, mode='a', newline='') as file:
 #                writer = csv.writer(file)
 #                writer.writerow([
@@ -743,8 +757,8 @@ while 0 <= frame_index < len(all_frames_withDistance):
     # === Your processing function could go here
     # Example: landmarks, blurring, cropping, etc.
     entry = all_frames_withDistance[frame_index]
-    resizedframe = cv2.resize(entry["frame"], displayRez)
-    cv2.imshow("Video Playback", resizedframe)
+    #resizedframe = cv2.resize(entry["frame"], displayRez)
+    cv2.imshow("Video Playback", entry["frame"])  # Display the current frame
     print(f"Left heel distance: {entry["left_heel"]}, Right heel distance: {entry["left_heel"]}")
     if play_mode:
         key = cv2.waitKey(frame_delay) & 0xFF
