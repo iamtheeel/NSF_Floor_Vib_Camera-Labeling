@@ -23,13 +23,17 @@ from distance_position import find_dist_from_y  # ✅ Import your custom functio
 
 from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
 
-## Configureations:
+## Configurations:
 # Media pipe model: 
 #Pose detector: 224 x 224 x 3
 #Pose landmarker: 256 x 256 x 3 
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
+
+Runthrough = False 
+Playback = True 
+
 
 #North_South Runs
 #Kara's video file
@@ -601,9 +605,9 @@ def seconds_sinceMidnight(timeWith_ms_class,raw_frame):
     return total_seconds # Return the total seconds since midnight
 
 # Main code
-start_time = 1
+start_time = 4
 start_frame = int(start_time * fps) # Start frame for the clip
-end_time = 10 # End time for the clip in seconds
+end_time = 20 # End time for the clip in seconds
 end_frame = int(end_time * fps) # End frame for the clip
 print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0dd
 
@@ -638,11 +642,24 @@ alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 #Initialize direction 
 direction  = "None" 
 
-all_frames_withDistance = [] # List to store all frames
+frames_withDistance = [] # List to store all frames
+cropframes_withDistance = [] # List to store all cropped frames
 i = 0
 
+good = False
+while not good:
+    success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
+
+    if not success: # If the frame was not read successfully, break the loop
+        print("Failed to read frame")
+        exit()
+
+    good, result, adjusted_time_ms = isPersonInFrame(raw_frame, start_frame) #newDim_Frame Checks if there is a person
+    start_frame = start_frame + 1 # Increment the frame index
+
 #Read through the specified frame count
-for frame_Index in range(start_frame, end_frame): 
+#for frame_Index in range(start_frame, end_frame): 
+for frame_Index in range(start_frame, start_frame + 50):
 #for i in range(clipRunFrames):
     #frame_timestamp_ms = int((start_frame + i) * frameTime_ms)
     #i = i + 1 # Increment the frame index
@@ -653,19 +670,21 @@ for frame_Index in range(start_frame, end_frame):
     newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and
     #Shrinking it down to dimensions
     #Changes dimensions before finding landmarks
-    #drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
+    drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
     if newDim_Frame is not None: #Failsafe 
         good = False
         good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
         #result is the landmarks
         if good and result is not None:
-            #final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
-            #final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
+            final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
+            final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
             landmarks = result.pose_landmarks[0]
-            cropped_landLeft = landmarks[29]  # Left heel
-            cropped_landRight = landmarks[30]  # Right heel
-            drawLandmark_circle(newDim_Frame, landmarks[29], [0,255,255],5) # Draw green landmarks before transition
-            #drawLandmark_circle(final_frameCrop, landmarks[30], [255,0,0],5) # Draw green landmarks before transition
+            #cropped_landLeft = landmarks[29]  # Left heel
+            #cropped_landRight = landmarks[30]  # Right heel
+            drawLandmark_circle(final_frameCrop, landmarks[29], [255,0,0],2) # Blue = left heel
+            drawLandmark_circle(final_frameCrop, landmarks[31], [255,0,0],5) # Blue = left toe
+            drawLandmark_circle(final_frameCrop, landmarks[30], [0,0,255],2) # Red = right heel
+            drawLandmark_circle(final_frameCrop, landmarks[32], [0,0,255],5) # Red = right toe
             landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
             #circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
             #line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
@@ -674,6 +693,10 @@ for frame_Index in range(start_frame, end_frame):
             #for i in range(0, len(line_landmarks), 2):
             #    drawLandmark_line(final_frame, landmarks[line_landmarks[i]], landmarks[line_landmarks[i + 1]], [0, 255, 0])
             #drawLandmark_circle(final_frame,landmarks[0],[0,255,0],15)
+            drawLandmark_circle(final_frame, landmarks[29], [255,0,0],2) # Blue = left heel
+            drawLandmark_circle(final_frame, landmarks[31], [255,0,0],5) # Blue = left toe
+            drawLandmark_circle(final_frame, landmarks[30], [0,0,255],2) # Red = right heel
+            drawLandmark_circle(final_frame, landmarks[32], [0,0,255],5) # Red = right toe            
             min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
             smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
             resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
@@ -699,15 +722,38 @@ for frame_Index in range(start_frame, end_frame):
             left_distToe = find_dist_from_y(left_toe_y_px)
             right_distToe = find_dist_from_y(right_toe_y_px)
             total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
-            all_frames_withDistance.append({
-            "frame": newDim_Frame,
+            resizedframe = cv2.resize(final_frame, displayRez)
+            
+            frames_withDistance.append({
+            "frame": resizedframe.copy(),
             "right_heel": right_distHeel,
             "left_heel": left_distHeel
             })
-            newDim_H, newDim_W = newDim_Frame.shape[:2]
-            arrFrame = all_frames_withDistance[i]
 
-            cv2.putText(arrFrame["frame"], str(arrFrame["left_heel"]), (round(cropped_landLeft.x * newDim_W), round(cropped_landLeft.y * newDim_H)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+#            newDim_H, newDim_W = newDim_Frame.shape[:2]
+            arrFrame = frames_withDistance[i]
+
+            text = f"Left Heel: {arrFrame['left_heel']:.2f}"
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            scale = 0.5
+            thickness = 1
+
+            (text_width, text_height), baseline = cv2.getTextSize(text, font, scale, thickness)
+
+            # Top-left corner of box
+            x, y = 10, 100
+
+            cv2.rectangle(
+                arrFrame["frame"],
+                (x - 2, y - text_height - 2),                # Top-left corner
+                (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
+                (255, 255, 255),                             # White background
+                thickness=cv2.FILLED                         # Filled rectangle
+            )
+            cv2.putText(arrFrame["frame"], text, (x, y), font, scale, (0,0,0), thickness)
+#            cv2.putText(arrFrame["frame"], f"Right Heel: {arrFrame['right_heel']:.2f}", (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
             i = i + 1 # Increment the frame index
 #            with open(csv_path, mode='a', newline='') as file:
 #                writer = csv.writer(file)
@@ -745,7 +791,7 @@ frame_index = 0
 play_mode = False  # False = manual step-through, True = autoplay
 frame_delay = 30   # ms between frames in play mode
 
-while 0 <= frame_index < len(all_frames_withDistance):
+while 0 <= frame_index < len(frames_withDistance):
 
     # === Overlay info (frame number and time)
 #    timestamp = str(datetime.timedelta(seconds=int(frame_index / videoOpbject.get(cv2.CAP_PROP_FPS))))
@@ -756,9 +802,9 @@ while 0 <= frame_index < len(all_frames_withDistance):
 
     # === Your processing function could go here
     # Example: landmarks, blurring, cropping, etc.
-    entry = all_frames_withDistance[frame_index]
-    #resizedframe = cv2.resize(entry["frame"], displayRez)
-    cv2.imshow("Video Playback", entry["frame"])  # Display the current frame
+    entry = frames_withDistance[frame_index]
+    resizedframe = cv2.resize(entry["frame"], displayRez)
+    cv2.imshow("Video Playback", resizedframe)  # Display the current frame
     print(f"Left heel distance: {entry["left_heel"]}, Right heel distance: {entry["left_heel"]}")
     if play_mode:
         key = cv2.waitKey(frame_delay) & 0xFF
@@ -776,7 +822,7 @@ while 0 <= frame_index < len(all_frames_withDistance):
     elif key == ord('r'):  # Rewind to beginning
         frame_index = 0
     elif key == ord('f'):  # Jump forward 10 frames
-        frame_index = min(frame_index + 10, len(all_frames_withDistance) - 1)
+        frame_index = min(frame_index + 10, len(frames_withDistance) - 1)
     elif key == ord('b'):  # Jump back 10 frames
         frame_index = max(frame_index - 10, 0)
     else:
