@@ -70,8 +70,8 @@ Playback = True
 #file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 #dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
 #file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
-dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
-file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Jack's video file
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
@@ -91,6 +91,8 @@ file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf""
 
+dir = r"E:\STARS\07_10_2025_Vid_Data"
+file = "intercept_run_7-10-2025_10-45-46 AM.asf"
 fileName = f"{dir}/{file}"
 
 #Global variables
@@ -538,6 +540,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
             max_width = maintain_dim[3]
             min_width = maintain_dim[2]
     # Make sure the result isn't an empty crop
+
     if max_width <= min_width or max_height <= min_height:
     # Return the full frame as fallback
         return 0, frame_width, 0, frame_height, maintain_dim
@@ -605,11 +608,11 @@ def seconds_sinceMidnight(timeWith_ms_class,raw_frame):
     return total_seconds # Return the total seconds since midnight
 
 # Main code
-start_time = 4
+start_time = 0
 start_frame = int(start_time * fps) # Start frame for the clip
 end_time = 20 # End time for the clip in seconds
 end_frame = int(end_time * fps) # End frame for the clip
-print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0dd
+print("Initial frame position:", videoOpbject.get(cv2.CAP_PROP_POS_FRAMES)) #Ensures initial frame is 0
 
 # Read frames until we reach the frame prior to start frame
 videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, start_frame-1)
@@ -646,8 +649,11 @@ frames_withDistance = [] # List to store all frames
 cropframes_withDistance = [] # List to store all cropped frames
 i = 0
 
+"""
 good = False
-while not good:
+frames_withperson = 0
+
+while frames_withperson < 5: # Loop until a person is detected or 5 frames have been processed
     success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
 
     if not success: # If the frame was not read successfully, break the loop
@@ -656,10 +662,15 @@ while not good:
 
     good, result, adjusted_time_ms = isPersonInFrame(raw_frame, start_frame) #newDim_Frame Checks if there is a person
     start_frame = start_frame + 1 # Increment the frame index
+    if good: 
+        frames_withperson = frames_withperson + 1 # Increment the frame index
 
+frame_Index = start_frame
+"""
 #Read through the specified frame count
 #for frame_Index in range(start_frame, end_frame): 
-for frame_Index in range(start_frame, start_frame + 50):
+#while len(frames_withDistance) < 60: # Loop until 5 frames with distance are collected
+for frame_Index in range(start_frame, end_frame):
 #for i in range(clipRunFrames):
     #frame_timestamp_ms = int((start_frame + i) * frameTime_ms)
     #i = i + 1 # Increment the frame index
@@ -786,6 +797,7 @@ for frame_Index in range(start_frame, start_frame + 50):
   
         key1 = cv2.waitKey(1) # Wait for a key press
         if key1 == ord('q') & 0xFF: exit()
+    frame_Index = frame_Index + 1 # Increment the frame index
 
 frame_index = 0
 play_mode = False  # False = manual step-through, True = autoplay
