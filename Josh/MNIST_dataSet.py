@@ -14,10 +14,9 @@ import cv2  # pip install opencv-python
 import numpy as np
 
 train_data = datasets.MNIST(
-    root="MNIST", #MNIST, # where to download data to?
+    root="MNIST", #MNIST, # where to download data to
     download=True, # download data if it doesn't exist on disk
 )
-
 
 print(f"Data: {len(train_data.data)}, labels: {len(train_data.targets)}")
 print(f"Data Type:{type(train_data[50])}")
@@ -32,3 +31,4 @@ cv2.imshow("label", image)
 cv2.waitKey(0)
 
 # Loop over the data
+# Try another dataset
