@@ -1,5 +1,5 @@
 ####
-#   Kara-Leah 
+#   Kara-Leah
 #   STARS Summer 2025
 #   Dr J Lab
 ###
@@ -7,99 +7,232 @@
 # make a dataloader and start with tensors
 ####
 
-import os
 import torch
-from torch.utils.data import Dataset, DataLoader
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader, random_split
 
+
+import os
 import pandas as pd # For loading the csv
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay # pip install scikit-learn
 import matplotlib.pyplot as plt # Ploting
-import numpy as np # For numerical operations
+import numpy as np
 
+from functools import partial
+import os
+import tempfile
+from pathlib import Path
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+from ray import tune
+from ray import train
+from ray.train import Checkpoint, get_checkpoint
+from ray.tune.schedulers import ASHAScheduler
+import ray.cloudpickle as pickle
+#import random
+
+## Configurations
+# Data
+dataDir = 'StudentData/25_06_18/expRuns'
+sampleFreq_hz =  1/0.033
+windowLen_s = 5
+strideLen_s = 1
+
+# Training
+nEpochs = 10
+learningRate = 0.001
+
+#seed
+seed = 1337
+#random.seed(seed)
+torch.manual_seed(seed)
+g = torch.Generator()
+g.manual_seed(seed)
+
+### Data Loader ###
 class SlidingWindowHeelDataset(Dataset):
     def __init__(self, folder_path, window_size=64, stride=32):
         self.samples = []
         self.labels = []
-        self.file_names = []
+        self.window_size = window_size
+        self.stride = stride
 
         for fileName in os.listdir(folder_path):
             if not fileName.endswith('.csv'): continue # Skip over non csv files
-                     # Load the csv file
+
+            # Load the csv file
             print(f"Loading: {fileName}")
             path = os.path.join(folder_path, fileName)
             fileData = pd.read_csv(path)
 
             # Get the left and right foot data
-            left = fileData['LeftHeel (m)'].values
-            right = fileData['RightHeel (m)'].values
-            print(f"Left: {len(left)}, Right: {len(right)}")
+            left = fileData['LeftHeel_Dist'].values
+            right = fileData['RightHeel_Dist'].values
             # Convert to tensors
             left_tensor = torch.tensor(left, dtype=torch.float32)
             right_tensor = torch.tensor(right, dtype=torch.float32)
 
-            # Sliding window from left foot
-            for i in range(0, len(left_tensor) - window_size + 1, stride):
-                window = left_tensor[i:i + window_size]
-                self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
-                self.labels.append(0)  # 0 = Left
-                self.file_names.append(fileName)  # Store the file name
-            
+            # Sliding window from the data
+            self.sldWin(left_tensor, 0)
+            self.sldWin(right_tensor, 1)
 
-            # Sliding window from right foot
-            for i in range(0, len(right_tensor) - window_size + 1, stride):
-                window = right_tensor[i:i + window_size]
-                self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
-                self.labels.append(1)  # 1 = Right
-                self.file_names.append(fileName)  # Store the file name
+    def sldWin(self, data, label):
+        for i in range(0, len(data) - self.window_size + 1, self.stride):
+            window = data[i:i + self.window_size]
+
+            window = self.standardize(window)  # Standardize the window
+
+            self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
+            self.labels.append(label)  
+
+
+    def standardize(self, dataBlocks):
+        mean = torch.mean(dataBlocks)
+        std = torch.std(dataBlocks)
+        return (dataBlocks - mean) / std
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        return self.samples[idx], self.labels[idx], self.file_names[idx]  # shape: (window_size, 2)
+        return self.samples[idx], self.labels[idx]  # shape: (window_size, 2)
+    
+### Model ###
+class nNet(nn.Module ):
+    def __init__(self, input_size, nClasses):
+        super(nNet, self).__init__()
+        layerSize = 64
+        self.fc1 = nn.Linear(input_size, layerSize)
+        self.fc2 = nn.Linear(layerSize, nClasses)  
 
-# Make a Dataset
-fs = 30  # Hz
-window_size_s = 5  # 5 seconds
-window_size = fs * window_size_s  # Convert to samples
-stride_s = 1  # 1 second stride
-stride = stride_s * fs  # 30 samples stride
+    def forward(self, x):
+        x = x.view(x.size(0), -1)  # Flatten: (batch, window_len)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
-dataset = SlidingWindowHeelDataset("StudentData/25_06_18/", window_size, stride)
-# Change the window/stride to seconds
-print(f"Total samples in dataset: {len(dataset)}")
-print("We're here!")  
-for i, (window, label, file) in enumerate(dataset):
-    print(f"Window {i}: {window.shape}, label: {label}, file: {file}") 
-
-    # Plot the data
-    #window, label = dataset[i]
-    window_np = window.squeeze(-1).numpy()  # shape: (window_size,)
-
-    # X-axis in milliseconds
-    time_axis = (np.arange(len(window_np)) / fs)  # ms
-    # Change the x-axis to miliseconds
-    # Plot
-    plt.figure(figsize=(8, 5))
-    plt.plot(time_axis, window_np, label='Heel Position (m)')
-    plt.title(f"Sample {i} - Label: {'Left' if label == 0 else 'Right'}")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Heel Position (m)")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
+## Plotting ###
+def plot_data(i, window, label):
+    t = np.linspace(0, windowLen_s, num=len(window), endpoint=False)
+    title_str = f"Window {i}: {window.shape}, label: {label}"
+    print(title_str) 
+    plt.title(title_str)
+    plt.plot(t, window)
+    plt.xlabel("Time (S)")
+    plt.ylabel("Location in Hall (m)")
     plt.show()
 
-    key = input("Press Enter for next plot, or type q to quit: ")
-    if key.lower() == 'q':
-        break
+
+def load_data(data_dir, windowLen_s=5, strideLen_s=1, sampleFreq_hz=1/0.033, batch_size=32, seed=1337):
+    torch.manual_seed(seed)
+    g = torch.Generator().manual_seed(seed)
+
+    # Compute window and stride lengths
+    windowLen = int(windowLen_s * sampleFreq_hz)
+    strideLen = int(strideLen_s * sampleFreq_hz)
+
+    # Load dataset
+    dataset = SlidingWindowHeelDataset(data_dir, window_size=windowLen, stride=strideLen)
+    print(f"Total windows in dataset: {len(dataset)}")
+
+    # Train/test split
+    train_len = int(0.8 * len(dataset))
+    test_len = len(dataset) - train_len
+    train_ds, test_ds = random_split(dataset, [train_len, test_len], generator=g)
+
+    # Dataloaders
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=g)
+    test_loader = DataLoader(test_ds, batch_size=batch_size)
+
+    return train_loader, test_loader, windowLen
+
+## Do the stuff ##
+# Make a Dataset
+windowLen = int(windowLen_s*sampleFreq_hz)
+strideLen = int(strideLen_s*sampleFreq_hz)
+dataset = SlidingWindowHeelDataset(dataDir, window_size=windowLen, stride=strideLen)
+print(f"Total windows in dataset: {len(dataset)}")
+
+''' 
+# View  the dataset
+for i, (window, label) in enumerate(dataset):
+    plot_data(i, window, label)
+exit()
+'''
+## Make dataloaders
+train_len = int(0.8 * len(dataset))
+test_len = len(dataset) - train_len
+train_ds, test_ds = random_split(dataset, [train_len, test_len])
+train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator = g)
+test_loader = DataLoader(test_ds, batch_size=32)
+
+model = nNet(input_size=windowLen, nClasses=2)
+optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
+loss_fn = nn.CrossEntropyLoss()
+
+## Train 
+for epoch in range(nEpochs): 
+    model.train() # PUt the model in read write
+    total_loss = 0
+    correct = 0
+    for batch_window, batch_label in train_loader:
+
+        outputs = model(batch_window)        # Run the forward pass
+        loss = loss_fn(outputs, batch_label) # Calculate how far off we are
+
+        optimizer.zero_grad()                # zero out the gradiants
+        loss.backward()                      # Run the backwards pass
+        optimizer.step()                     # Step the optimiser
+
+        total_loss += loss.item()
+        preds = outputs.argmax(dim=1)
+        correct += (preds == batch_label).sum().item()
+
+    acc = 100. * correct / len(train_loader.dataset)
+    print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
 
 
+## Validate
+# For Confusion matrix:
+all_preds = []
+all_labels = []
 
+correct = 0
+model.eval() # Put the model in read only
+with torch.no_grad():
+    for batch_window, batch_label in test_loader:
+        outputs = model(batch_window)
+        preds = outputs.argmax(dim=1)
 
-train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+        # Look at the results
+        correct += (preds == batch_label).sum().item()
+        # For confusion matrix
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(batch_label.cpu().numpy())
 
-for i, (batch_window, batch_label) in enumerate(train_loader):
-    print(f"Type: {type(batch_window)}, {type(batch_label)}")  
-    print(f"Shape: {batch_window.shape}, {batch_label.shape}")
+## Analize
+print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
 
-    # Plot the windows in the batch
+# Compute confusion matrix
+cm = confusion_matrix(all_labels, all_preds)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Left", "Right"])
+
+# Plot it
+disp.plot(cmap=plt.cm.Blues)
+plt.title("Confusion Matrix - Validation Set")
+plt.xlabel("Predicted")
+plt.ylabel("True")
+plt.grid(False)
+plt.show()
+
+# Note, funtionalizeing of dataloader
+# Plot loss (how wrong is each guess) and accuracy (how many did we get right)
+# Add toes to the classifyer
+# Why are the results not the same every time? How to fix?
+# Look at the data, what can be done to improve our results?
+# Normalize, standardize by window
+# Globaly normalize, standardize
+# Loss function  -- MSE, RMS..
+# Optimizer -- Hill analigy
