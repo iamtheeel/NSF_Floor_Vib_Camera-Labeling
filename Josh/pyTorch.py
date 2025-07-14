@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, random_split
 
+import random
 
 import os
 import pandas as pd # For loading the csv
@@ -20,15 +21,26 @@ import matplotlib.pyplot as plt # Ploting
 import numpy as np
 
 ## Configurations
+plotData = False
 # Data
 dataDir = 'StudentData/25_06_18/expRuns'
 sampleFreq_hz =  1/0.033
 windowLen_s = 5
 strideLen_s = 1
+#classes = ["Left", "Right"]
+classes = ["Heel", "Toe"]
+#classes = ["Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
-# Training
-nEpochs = 10
+# Training hyperameters
+nEpochs = 20
 learningRate = 0.001
+
+# rand seed
+seed = 1337
+random.seed(seed)
+torch.manual_seed(seed)
+g = torch.Generator()
+g.manual_seed(seed)
 
 ### Data Loader ###
 class SlidingWindowHeelDataset(Dataset):
@@ -47,21 +59,38 @@ class SlidingWindowHeelDataset(Dataset):
             fileData = pd.read_csv(path)
 
             # Get the left and right foot data
-            left = fileData['LeftHeel_Dist'].values
-            right = fileData['RightHeel_Dist'].values
+            h_left = fileData['LeftHeel_Dist'].values
+            h_right = fileData['RightHeel_Dist'].values
+            t_left = fileData['LeftToe_Dist'].values
+            t_right = fileData['RightToe_Dist'].values
             # Convert to tensors
-            left_tensor = torch.tensor(left, dtype=torch.float32)
-            right_tensor = torch.tensor(right, dtype=torch.float32)
+            h_left_tensor = torch.tensor(h_left, dtype=torch.float32)
+            h_right_tensor = torch.tensor(h_right, dtype=torch.float32)
+            t_left_tensor = torch.tensor(t_left, dtype=torch.float32)
+            t_right_tensor = torch.tensor(t_right, dtype=torch.float32)
 
             # Sliding window from the data
-            self.sldWin(left_tensor, 0)
-            self.sldWin(right_tensor, 1)
+            self.sldWin(h_left_tensor, 0)
+            self.sldWin(h_right_tensor, 0)
+            self.sldWin(t_left_tensor, 1)
+            self.sldWin(t_right_tensor, 1)
+        # Done File
 
     def sldWin(self, data, label):
         for i in range(0, len(data) - self.window_size + 1, self.stride):
             window = data[i:i + self.window_size]
+
+            window = self.standerdize(window) # Standardize each block to it's self
+
             self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
-            self.labels.append(label)  
+            self.labels.append(label) 
+
+    #def normalize(self, dataBlock):
+
+    def standerdize(self, dataBlock):
+        mean = torch.mean(dataBlock)
+        std = torch.std(dataBlock)
+        return (dataBlock - mean)/std
 
     def __len__(self):
         return len(self.samples)
@@ -75,12 +104,16 @@ class nNet(nn.Module ):
         super(nNet, self).__init__()
         layerSize = 64
         self.fc1 = nn.Linear(input_size, layerSize)
-        self.fc2 = nn.Linear(layerSize, nClasses)  
+        self.fc2 = nn.Linear(layerSize, layerSize)  
+        self.fc3 = nn.Linear(layerSize, layerSize)  
+        self.classifyer = nn.Linear(layerSize, nClasses)  
 
     def forward(self, x):
         x = x.view(x.size(0), -1)  # Flatten: (batch, window_len)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        #x = F.relu(self.fc2(x))
+        #x = F.relu(self.fc3(x))
+        x = self.classifyer(x)
         return x
 
 ## Plotting ###
@@ -101,20 +134,19 @@ strideLen = int(strideLen_s*sampleFreq_hz)
 dataset = SlidingWindowHeelDataset(dataDir, window_size=windowLen, stride=strideLen)
 print(f"Total windows in dataset: {len(dataset)}")
 
-''' 
-# View  the dataset
-for i, (window, label) in enumerate(dataset):
-    plot_data(i, window, label)
-exit()
-'''
+# View  the datasetA
+if plotData:
+    for i, (window, label) in enumerate(dataset):
+        plot_data(i, window, label)
+    exit()
 ## Make dataloaders
 train_len = int(0.8 * len(dataset))
 test_len = len(dataset) - train_len
 train_ds, test_ds = random_split(dataset, [train_len, test_len])
-train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
+train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator=g)
 test_loader = DataLoader(test_ds, batch_size=32)
 
-model = nNet(input_size=windowLen, nClasses=2)
+model = nNet(input_size=windowLen, nClasses=len(classes))
 optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 loss_fn = nn.CrossEntropyLoss()
 
@@ -140,7 +172,7 @@ for epoch in range(nEpochs):
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
 
 
-## Validate
+## ValidatEpoch 500, Loss: 4.8402, Accuracy: 90.92%e
 # For Confusion matrix:
 all_preds = []
 all_labels = []
@@ -163,7 +195,8 @@ print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
 
 # Compute confusion matrix
 cm = confusion_matrix(all_labels, all_preds)
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Left", "Right"])
+print(cm)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
 
 # Plot it
 disp.plot(cmap=plt.cm.Blues)
