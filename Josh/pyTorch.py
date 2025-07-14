@@ -30,7 +30,7 @@ strideLen_s = 1
 nEpochs = 10
 learningRate = 0.001
 
-
+### Data Loader ###
 class SlidingWindowHeelDataset(Dataset):
     def __init__(self, folder_path, window_size=64, stride=32):
         self.samples = []
@@ -69,6 +69,7 @@ class SlidingWindowHeelDataset(Dataset):
     def __getitem__(self, idx):
         return self.samples[idx], self.labels[idx]  # shape: (window_size, 2)
     
+### Model ###
 class nNet(nn.Module ):
     def __init__(self, input_size, nClasses):
         super(nNet, self).__init__()
@@ -82,7 +83,7 @@ class nNet(nn.Module ):
         x = self.fc2(x)
         return x
 
-
+## Plotting ###
 def plot_data(i, window, label):
     t = np.linspace(0, windowLen_s, num=len(window), endpoint=False)
     title_str = f"Window {i}: {window.shape}, label: {label}"
@@ -93,6 +94,7 @@ def plot_data(i, window, label):
     plt.ylabel("Location in Hall (m)")
     plt.show()
 
+## Do the stuff ##
 # Make a Dataset
 windowLen = int(windowLen_s*sampleFreq_hz)
 strideLen = int(strideLen_s*sampleFreq_hz)
@@ -116,7 +118,7 @@ model = nNet(input_size=windowLen, nClasses=2)
 optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 loss_fn = nn.CrossEntropyLoss()
 
-
+## Train 
 for epoch in range(nEpochs): 
     model.train() # PUt the model in read write
     total_loss = 0
@@ -138,12 +140,13 @@ for epoch in range(nEpochs):
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
 
 
+## Validate
 # For Confusion matrix:
 all_preds = []
 all_labels = []
 
-model.eval() # Put the model in read only
 correct = 0
+model.eval() # Put the model in read only
 with torch.no_grad():
     for batch_window, batch_label in test_loader:
         outputs = model(batch_window)
@@ -155,6 +158,7 @@ with torch.no_grad():
         all_preds.extend(preds.cpu().numpy())
         all_labels.extend(batch_label.cpu().numpy())
 
+## Analize
 print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
 
 # Compute confusion matrix
@@ -170,8 +174,11 @@ plt.grid(False)
 plt.show()
 
 # Note, funtionalizeing of dataloader
-# Plot loss and accuracy
+# Plot loss (how wrong is each guess) and accuracy (how many did we get right)
 # Add toes to the classifyer
+# Why are the results not the same every time? How to fix?
 # Look at the data, what can be done to improve our results?
 # Normalize, standardize by window
 # Globaly normalize, standardize
+# Loss function  -- MSE, RMS..
+# Optimizer -- Hill analigy
