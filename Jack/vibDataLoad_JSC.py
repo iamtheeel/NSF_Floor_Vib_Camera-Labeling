@@ -303,7 +303,7 @@ fileDataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile
 dataCapRate_hz = fileDataCapRate_hz
 print(f"Data cap rate: {fileDataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
-downSampleRate = 1
+downSampleRate = 2
 #trialList = [1]
 #trialList = [7]
 for trial in range(nTrials): # Cycle through the trials
