@@ -12,8 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, random_split
 
-import random
-
 import os
 import pandas as pd # For loading the csv
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay # pip install scikit-learn
@@ -24,33 +22,41 @@ import numpy as np
 plotData = False
 # Data
 dataDir = 'StudentData/25_06_18/expRuns'
-sampleFreq_hz =  1/0.033
+sampleFreq_hz =  30#1/0.033
 windowLen_s = 5
 strideLen_s = 1
-#classes = ["Left", "Right"]
-classes = ["Heel", "Toe"]
-#classes = ["Left Heel", "Right Heel", "Left Toe", "Right Toe"]
+#classes = ["None", "Left", "Right"]
+classes = ["None", "Heel", "Toe"]
+#classes = ["None", "Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
 # Training hyperameters
-nEpochs = 20
+nEpochs = 150
 learningRate = 0.001
 
-# rand seed
+# Make sure the runs are the same 
 seed = 1337
-random.seed(seed)
 torch.manual_seed(seed)
 g = torch.Generator()
 g.manual_seed(seed)
 
 ### Data Loader ###
 class SlidingWindowHeelDataset(Dataset):
-    def __init__(self, folder_path, window_size=64, stride=32):
+    def __init__(self, folder_path, window_size, stride):
         self.samples = []
         self.labels = []
+        self.sTime = []
         self.window_size = window_size
         self.stride = stride
 
         for fileName in os.listdir(folder_path):
+            '''
+            Loading: sub_2_run_4_NS_11-41-35_AM.csv
+            Loading: sub_2_run_3_SN_pt_1_11-40-17_AM.csv
+            Loading: Sub_1_Run_2_SN_11-47-57_AM.csv
+            Loading: Sub_1_Run_3_NS_11-49-29_AM.csv
+            Loading: sub_3_run_4_NS_11-26-08_AM.csv
+            Loading: Sub3_run7_SN_11-34-22_AM.csv
+            '''
             if not fileName.endswith('.csv'): continue # Skip over non csv files
 
             # Load the csv file
@@ -63,27 +69,37 @@ class SlidingWindowHeelDataset(Dataset):
             h_right = fileData['RightHeel_Dist'].values
             t_left = fileData['LeftToe_Dist'].values
             t_right = fileData['RightToe_Dist'].values
+            noStep = fileData['noStep'].values
+            sTime_str = fileData['Time'].values
             # Convert to tensors
             h_left_tensor = torch.tensor(h_left, dtype=torch.float32)
             h_right_tensor = torch.tensor(h_right, dtype=torch.float32)
             t_left_tensor = torch.tensor(t_left, dtype=torch.float32)
             t_right_tensor = torch.tensor(t_right, dtype=torch.float32)
 
+
             # Sliding window from the data
-            self.sldWin(h_left_tensor, 0)
-            self.sldWin(h_right_tensor, 0)
-            self.sldWin(t_left_tensor, 1)
-            self.sldWin(t_right_tensor, 1)
+            self.sldWin(h_left_tensor, noStep, 1, sTime_str)
+            self.sldWin(h_right_tensor, noStep, 1, sTime_str)
+            self.sldWin(t_left_tensor, noStep, 2, sTime_str)
+            self.sldWin(t_right_tensor, noStep, 2, sTime_str)
         # Done File
 
-    def sldWin(self, data, label):
+    def sldWin(self, data, noStep, label, sTime):
         for i in range(0, len(data) - self.window_size + 1, self.stride):
+            self.sTime.append(sTime[i])
             window = data[i:i + self.window_size]
+            noStep_win = noStep[i:i + self.window_size]
 
             window = self.standerdize(window) # Standardize each block to it's self
 
             self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
-            self.labels.append(label) 
+            noStep_sum = np.sum(noStep_win)
+            print(f"frame: {i}:{i+self.window_size}, noStepSum: {noStep_sum}, Label: {label}")
+            if noStep_sum > 10: 
+                self.labels.append(0) 
+            else:
+                self.labels.append(label) 
 
     #def normalize(self, dataBlock):
 
@@ -96,7 +112,7 @@ class SlidingWindowHeelDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        return self.samples[idx], self.labels[idx]  # shape: (window_size, 2)
+        return self.samples[idx], self.labels[idx], self.sTime[idx]  # shape: (window_size, 2)
     
 ### Model ###
 class nNet(nn.Module ):
@@ -104,22 +120,22 @@ class nNet(nn.Module ):
         super(nNet, self).__init__()
         layerSize = 64
         self.fc1 = nn.Linear(input_size, layerSize)
-        self.fc2 = nn.Linear(layerSize, layerSize)  
-        self.fc3 = nn.Linear(layerSize, layerSize)  
+        self.fc2 = nn.Linear(layerSize, 128)  
+        self.fc3 = nn.Linear(128, layerSize)  
         self.classifyer = nn.Linear(layerSize, nClasses)  
 
     def forward(self, x):
         x = x.view(x.size(0), -1)  # Flatten: (batch, window_len)
         x = F.relu(self.fc1(x))
-        #x = F.relu(self.fc2(x))
-        #x = F.relu(self.fc3(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
         x = self.classifyer(x)
         return x
 
 ## Plotting ###
-def plot_data(i, window, label):
+def plot_data(i, window, label, sTime):
     t = np.linspace(0, windowLen_s, num=len(window), endpoint=False)
-    title_str = f"Window {i}: {window.shape}, label: {label}"
+    title_str = f"Frame {i}: Start Time: {sTime} {window.shape}, label: {label}"
     print(title_str) 
     plt.title(title_str)
     plt.plot(t, window)
@@ -136,8 +152,8 @@ print(f"Total windows in dataset: {len(dataset)}")
 
 # View  the datasetA
 if plotData:
-    for i, (window, label) in enumerate(dataset):
-        plot_data(i, window, label)
+    for i, (window, label, sTime) in enumerate(dataset):
+        plot_data(i*sampleFreq_hz, window, label, sTime)
     exit()
 ## Make dataloaders
 train_len = int(0.8 * len(dataset))
@@ -155,7 +171,7 @@ for epoch in range(nEpochs):
     model.train() # PUt the model in read write
     total_loss = 0
     correct = 0
-    for batch_window, batch_label in train_loader:
+    for batch_window, batch_label, _ in train_loader:
 
         outputs = model(batch_window)        # Run the forward pass
         loss = loss_fn(outputs, batch_label) # Calculate how far off we are
@@ -180,7 +196,7 @@ all_labels = []
 correct = 0
 model.eval() # Put the model in read only
 with torch.no_grad():
-    for batch_window, batch_label in test_loader:
+    for batch_window, batch_label, _ in test_loader:
         outputs = model(batch_window)
         preds = outputs.argmax(dim=1)
 
