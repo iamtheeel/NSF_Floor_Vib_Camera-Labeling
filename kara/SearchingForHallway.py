@@ -649,7 +649,8 @@ frames_withDistance = [] # List to store all frames
 
 default_dict = {
     "frame": None,
-    "landmarks": [0]
+    "landmarks": None,
+    "Left_ToeDist": None 
 } # List to store all cropped frames
 
 track_frames = [default_dict.copy() for _ in range(end_frame - start_frame)] # Initialize the list with the number of frames
@@ -679,6 +680,7 @@ frame_Index = start_frame
 frame_set = start_frame # Set the initial frame index to start_frame
 videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_set)
 print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
+i = 0
 
 for frame_Index in range(start_frame, end_frame):
     if track_frames[(start_frame - frame_set)]["frame"] is None: # If the frame is already processed, don't send it to the model
@@ -705,6 +707,7 @@ for frame_Index in range(start_frame, end_frame):
                 drawLandmark_circle(final_frameCrop, landmarks[30], [0,0,255],2) # Red = right heel
                 drawLandmark_circle(final_frameCrop, landmarks[32], [0,0,255],5) # Red = right toe
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
+                track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
                 #circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
                 #line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
                 #for i in circle_landmarks:
@@ -719,13 +722,13 @@ for frame_Index in range(start_frame, end_frame):
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
                 resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
-                cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
-                resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-                cv2.imshow("Frame", resizedFrame) #displays frame
-                
+                resizedframe = cv2.resize(final_frame, displayRez)
+                track_frames[i]["frame"] = resizedframe # Store the frame index in the track_frames list
                 # === Heel Y values (normalized and pixel)
-                left_heel_y_norm = landmarks[29].y
-                right_heel_y_norm = landmarks[30].y
+                #left_heel_y_norm = landmarks[29].y
+                #right_heel_y_norm = landmarks[30].y
+                left_heel_y_norm = track_frames[i]["landmarks"][29].y
+                right_heel_y_norm = track_frames[i]["landmarks"][30].y
                 left_heel_y_px = left_heel_y_norm * height
                 right_heel_y_px = right_heel_y_norm * height
                 # === Distances using your function
@@ -733,27 +736,30 @@ for frame_Index in range(start_frame, end_frame):
                 right_distHeel = find_dist_from_y(right_heel_y_px)
             
                 # === Toe Y values (normalized and pixel)
-                left_toe_y_norm = landmarks[31].y
-                right_toe_y_norm = landmarks[32].y
+                #left_toe_y_norm = landmarks[31].y
+                #right_toe_y_norm = landmarks[32].y
+                left_toe_y_norm = track_frames[i]["landmarks"][31].y
+                right_toe_y_norm = track_frames[i]["landmarks"][32].y
                 left_toe_y_px = left_toe_y_norm * height
                 right_toe_y_px = right_toe_y_norm * height
                 # === Distances using your function
                 left_distToe = find_dist_from_y(left_toe_y_px)
                 right_distToe = find_dist_from_y(right_toe_y_px)
+                track_frames[i]["Left_ToeDist"] = left_distToe # Store the left toe distance in the track_frames list
                 total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
-                resizedframe = cv2.resize(final_frame, displayRez)
+
                 
-                frames_withDistance.append({
-                "frame": resizedframe.copy(),
-                "right_heel": right_distHeel,
-                "left_heel": left_distHeel
-                })
+                #frames_withDistance.append({
+                #"frame": frame_Index,
+                #"right_heel": right_distHeel,
+                #"left_heel": left_distHeel
+                #})
 
 
     #            newDim_H, newDim_W = newDim_Frame.shape[:2]
-                arrFrame = frames_withDistance[i]
+                #arrFrame = frames_withDistance[i]
 
-                text = f"Left Heel: {arrFrame['left_heel']:.2f}"
+                text = f"Left Heel: {track_frames[i]["Left_ToeDist"]:.2f}"
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 scale = 0.5
                 thickness = 1
@@ -764,16 +770,25 @@ for frame_Index in range(start_frame, end_frame):
                 x, y = 10, 100
 
                 cv2.rectangle(
-                    arrFrame["frame"],
+                    track_frames[i]["frame"],
                     (x - 2, y - text_height - 2),                # Top-left corner
                     (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
                     (255, 255, 255),                             # White background
                     thickness=cv2.FILLED                         # Filled rectangle
                 )
-                cv2.putText(arrFrame["frame"], text, (x, y), font, scale, (0,0,0), thickness)
-    #            cv2.putText(arrFrame["frame"], f"Right Heel: {arrFrame['right_heel']:.2f}", (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                cv2.putText(track_frames[i]["frame"], text, (x, y), font, scale, (0,0,0), thickness)
+            
+    #           cv2.putText(arrFrame["frame"], f"Right Heel: {arrFrame['right_heel']:.2f}", (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-
+    #            cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
+    #            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
+    #            cv2.imshow("Frame", resizedFrame) #displays frame
+    #            cv2.waitKey(1) # Wait for 1 ms to display the frame
+                cv2.imshow("Frame from array", track_frames[i]["frame"]) #displays frame
+                key1 = cv2.waitKey(0) & 0xFF  
+                if key1 == ord('q'):
+                    exit()
+                i = i + 1
     #            with open(csv_path, mode='a', newline='') as file:
     #                writer = csv.writer(file)
     #                writer.writerow([
@@ -802,17 +817,19 @@ for frame_Index in range(start_frame, end_frame):
     #            cv2.imshow("Frame to send model", resizedCropFrame)
     #            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
     #            cv2.imshow("Frame", resizedFrame) #displays frame
-    if keyboard.is_pressed('f'):  # Check if 'f' is pressed to exit
+    """
+    if keyboard.is_pressed('f'):  
         key1 = cv2.waitKey(0) & 0xFF  
         if key1 == ord('q'):
             exit()
-        else: key = input("Press g to step forward, d to step back, f to jump forward 10 frames, b to jump back 10 frames:")
+        else: key = input("Press g to step forward, d to step back, b to jump back 10 frames:")
         if key == 'g':  # Step forward
             cv2.imshow
         keyboard.wait('f')  
     #frame_Index = frame_Index + 1 # Increment the frame index
 
-    frame_index = 0
+   
+    #frame_index = 0
     play_mode = False  # False = manual step-through, True = autoplay
     frame_delay = 30   # ms between frames in play mode
 
@@ -861,4 +878,5 @@ for frame_Index in range(start_frame, end_frame):
     #     out_full.release()
     #if out_crop:
     #    out_crop.release()
+    """
 
