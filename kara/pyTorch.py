@@ -19,34 +19,25 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay # pip insta
 import matplotlib.pyplot as plt # Ploting
 import numpy as np
 
-from functools import partial
-import os
-import tempfile
-from pathlib import Path
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
-from ray import tune
-from ray import train
-from ray.train import Checkpoint, get_checkpoint
-from ray.tune.schedulers import ASHAScheduler
-import ray.cloudpickle as pickle
 #import random
 
 ## Configurations
+plotData = False
 # Data
 dataDir = 'StudentData/25_06_18/expRuns'
-sampleFreq_hz =  1/0.033
+sampleFreq_hz =  30#1/0.033
 windowLen_s = 5
 strideLen_s = 1
+#classes = ["None", "Left", "Right"]
+classes = ["None", "Heel", "Toe"]
+#classes = ["None", "Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
-# Training
-nEpochs = 10
+# Training hyperameters
+nEpochs = 150
 learningRate = 0.001
 
 #seed
 seed = 1337
-#random.seed(seed)
 torch.manual_seed(seed)
 g = torch.Generator()
 g.manual_seed(seed)
@@ -60,6 +51,14 @@ class SlidingWindowHeelDataset(Dataset):
         self.stride = stride
 
         for fileName in os.listdir(folder_path):
+            '''
+            Loading: sub_2_run_4_NS_11-41-35_AM.csv
+            Loading: sub_2_run_3_SN_pt_1_11-40-17_AM.csv
+            Loading: Sub_1_Run_2_SN_11-47-57_AM.csv
+            Loading: Sub_1_Run_3_NS_11-49-29_AM.csv
+            Loading: sub_3_run_4_NS_11-26-08_AM.csv
+            Loading: Sub3_run7_SN_11-34-22_AM.csv
+            '''
             if not fileName.endswith('.csv'): continue # Skip over non csv files
 
             # Load the csv file
@@ -68,24 +67,40 @@ class SlidingWindowHeelDataset(Dataset):
             fileData = pd.read_csv(path)
 
             # Get the left and right foot data
-            left = fileData['LeftHeel_Dist'].values
-            right = fileData['RightHeel_Dist'].values
+            h_left = fileData['LeftHeel_Dist'].values
+            h_right = fileData['RightHeel_Dist'].values
+            t_left = fileData['LeftToe_Dist'].values
+            t_right = fileData['RightToe_Dist'].values
+            noStep = fileData['noStep'].values
+            sTime_str = fileData['Time'].values
             # Convert to tensors
-            left_tensor = torch.tensor(left, dtype=torch.float32)
-            right_tensor = torch.tensor(right, dtype=torch.float32)
+            h_left_tensor = torch.tensor(h_left, dtype=torch.float32)
+            h_right_tensor = torch.tensor(h_right, dtype=torch.float32)
+            t_left_tensor = torch.tensor(t_left, dtype=torch.float32)
+            t_right_tensor = torch.tensor(t_right, dtype=torch.float32)
 
             # Sliding window from the data
-            self.sldWin(left_tensor, 0)
-            self.sldWin(right_tensor, 1)
+            self.sldWin(h_left_tensor, noStep, 1, sTime_str)
+            self.sldWin(h_right_tensor, noStep, 1, sTime_str)
+            self.sldWin(t_left_tensor, noStep, 2, sTime_str)
+            self.sldWin(t_right_tensor, noStep, 2, sTime_str)
+            # Done File
 
-    def sldWin(self, data, label):
+    def sldWin(self, data, noStep, label, sTime):
         for i in range(0, len(data) - self.window_size + 1, self.stride):
+            self.sTime.append(sTime[i])
             window = data[i:i + self.window_size]
+            noStep_win = noStep[i:i + self.window_size]
 
-            window = self.standardize(window)  # Standardize the window
+            window = self.standerdize(window) # Standardize each block to it's self
 
             self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
-            self.labels.append(label)  
+            noStep_sum = np.sum(noStep_win)
+            print(f"frame: {i}:{i+self.window_size}, noStepSum: {noStep_sum}, Label: {label}")
+            if noStep_sum > 10: 
+                self.labels.append(0) 
+            else:
+                self.labels.append(label) 
 
 
     def standardize(self, dataBlocks):
@@ -105,18 +120,23 @@ class nNet(nn.Module ):
         super(nNet, self).__init__()
         layerSize = 64
         self.fc1 = nn.Linear(input_size, layerSize)
-        self.fc2 = nn.Linear(layerSize, nClasses)  
+        self.fc2 = nn.Linear(layerSize, 128)  
+        self.fc3 = nn.Linear(128, layerSize)  
+        self.classifyer = nn.Linear(layerSize, nClasses)
 
     def forward(self, x):
         x = x.view(x.size(0), -1)  # Flatten: (batch, window_len)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.classifyer(x)
         return x
 
+
 ## Plotting ###
-def plot_data(i, window, label):
+def plot_data(i, window, label, sTime):
     t = np.linspace(0, windowLen_s, num=len(window), endpoint=False)
-    title_str = f"Window {i}: {window.shape}, label: {label}"
+    title_str = f"Frame {i}: Start Time: {sTime} {window.shape}, label: {label}"
     print(title_str) 
     plt.title(title_str)
     plt.plot(t, window)
@@ -125,7 +145,7 @@ def plot_data(i, window, label):
     plt.show()
 
 
-def load_data(data_dir, windowLen_s=5, strideLen_s=1, sampleFreq_hz=1/0.033, batch_size=32, seed=1337):
+def load_data(data_dir, windowLen_s=5, strideLen_s=1, sampleFreq_hz=30, batch_size=8, seed=1337):
     torch.manual_seed(seed)
     g = torch.Generator().manual_seed(seed)
 
@@ -146,27 +166,29 @@ def load_data(data_dir, windowLen_s=5, strideLen_s=1, sampleFreq_hz=1/0.033, bat
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=g)
     test_loader = DataLoader(test_ds, batch_size=batch_size)
 
-    return train_loader, test_loader, windowLen
+    return train_loader, test_loader, dataset, windowLen
 
 ## Do the stuff ##
 # Make a Dataset
-windowLen = int(windowLen_s*sampleFreq_hz)
-strideLen = int(strideLen_s*sampleFreq_hz)
-dataset = SlidingWindowHeelDataset(dataDir, window_size=windowLen, stride=strideLen)
-print(f"Total windows in dataset: {len(dataset)}")
+#windowLen = int(windowLen_s*sampleFreq_hz)
+#strideLen = int(strideLen_s*sampleFreq_hz)
+#dataset = SlidingWindowHeelDataset(dataDir, window_size=windowLen, stride=strideLen)
+#print(f"Total windows in dataset: {len(dataset)}")
 
-''' 
+train_loader, test_loader, dataset, windowLen = load_data(dataDir)
+
 # View  the dataset
 for i, (window, label) in enumerate(dataset):
     plot_data(i, window, label)
 exit()
-'''
+
 ## Make dataloaders
-train_len = int(0.8 * len(dataset))
-test_len = len(dataset) - train_len
-train_ds, test_ds = random_split(dataset, [train_len, test_len])
-train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator = g)
-test_loader = DataLoader(test_ds, batch_size=32)
+#train_len = int(0.8 * len(dataset))
+#test_len = len(dataset) - train_len
+#train_ds, test_ds = random_split(dataset, [train_len, test_len])
+#train_loader = DataLoader(train_ds, batch_size=8, shuffle=True, generator = g)
+#test_loader = DataLoader(test_ds, batch_size=8)
+
 
 model = nNet(input_size=windowLen, nClasses=2)
 optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
@@ -217,6 +239,7 @@ print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
 
 # Compute confusion matrix
 cm = confusion_matrix(all_labels, all_preds)
+print(cm)
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Left", "Right"])
 
 # Plot it
