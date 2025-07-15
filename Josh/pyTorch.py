@@ -23,15 +23,15 @@ plotData = False
 # Data
 dataDir = 'StudentData/25_06_18/expRuns'
 sampleFreq_hz =  30#1/0.033
-windowLen_s = 5
+windowLen_s = 4
 strideLen_s = 1
 #classes = ["None", "Left", "Right"]
 classes = ["None", "Heel", "Toe"]
 #classes = ["None", "Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
 # Training hyperameters
-nEpochs = 150
-learningRate = 0.001
+nEpochs = 300
+learningRate = 0.0005
 
 # Make sure the runs are the same 
 seed = 1337
@@ -96,7 +96,7 @@ class SlidingWindowHeelDataset(Dataset):
             self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
             noStep_sum = np.sum(noStep_win)
             print(f"frame: {i}:{i+self.window_size}, noStepSum: {noStep_sum}, Label: {label}")
-            if noStep_sum > 10: 
+            if noStep_sum > 75: 
                 self.labels.append(0) 
             else:
                 self.labels.append(label) 
@@ -182,6 +182,9 @@ for epoch in range(nEpochs):
 
         total_loss += loss.item()
         preds = outputs.argmax(dim=1)
+        #if(epoch == nEpochs-1):
+        #    print(f"Train Outs: {outputs}")
+        #    print(f"Pres: {preds}")
         correct += (preds == batch_label).sum().item()
 
     acc = 100. * correct / len(train_loader.dataset)
