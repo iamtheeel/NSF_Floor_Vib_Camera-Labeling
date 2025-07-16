@@ -24,17 +24,8 @@ from distance_position import find_dist_from_y  # ✅ Import your custom functio
 
 from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
 
-## Configurations:
-# Media pipe model: 
-#Pose detector: 224 x 224 x 3
-#Pose landmarker: 256 x 256 x 3 
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
-model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
-
 Runthrough = False 
 Playback = True 
-
 
 #North_South Runs
 #Kara's video file
@@ -89,28 +80,28 @@ Playback = True
 #file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected
-#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf""
+dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
-dir = r"E:\STARS\07_10_2025_Vid_Data"
-file = "intercept_run_7-10-2025_10-45-46 AM.asf"
+#dir = r"E:\STARS\07_10_2025_Vid_Data"
+#file = "intercept_run_7-10-2025_10-45-46 AM.asf"
 fileName = f"{dir}/{file}"
 
-#Global variables
+# ===== Global variables
+
 videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video object
 if not videoOpbject.isOpened():
     print("Error: Could not open video.")
     exit()
-
-# Get video properties    
-fps = videoOpbject.get(cv2.CAP_PROP_FPS) # Frames per second
-#print(f"FPS: {fps}")
+# Video properties    
+fps = 30 # Frames per second
 fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
-#height, width, _ = videoOpbject.read()[1].shape doing this reads the first frame, which we don't want to do yet
 width = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)) # Width of the video frame
 height = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Height of the video frame
-#width = 256
-#height = 256 
+frameTime_ms = 1000/fps #How long of a time does each frame cover
+# Fit to the display
+dispFact = 2
+displayRez = (int(width/dispFact), int(height/dispFact))
 
 """
 # Define video writers (90-frame clip, initialized when needed)
@@ -126,25 +117,22 @@ maintain_width_max = width
 maintain_width_min = 0
 """
 
-maintain_dim = [height, 0, width, 0] 
-
 #fourcc = cv2.VideoWriter_fourcc(*'XVID')
 #output_dir = r"E:\STARS\Clips"  # Set your own output path
 
-
-frameTime_ms = 1000/fps #How long of a time does each frame cover
-# Fit to the display
-dispFact = 2
-displayRez = (int(width/dispFact), int(height/dispFact))
-squareDisplayRez = (int(500),int(500))
-
-#mediaPipe settings
+#=== Setting up mediapipe
+## Configurations:
+# Media pipe model: 
+#Pose detector: 224 x 224 x 3
+#Pose landmarker: 256 x 256 x 3 
+#model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
+#model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
+model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
 PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
-
 # Create a pose landmarker instance with the video mode:
 options = PoseLandmarkerOptions(
                                 base_options=BaseOptions(model_asset_path=model_path,
@@ -156,11 +144,9 @@ options = PoseLandmarkerOptions(
                                )
 
 landmarkerVideo = PoseLandmarker.create_from_options(options)
-#exit()
-
-#functions
 
 
+# === Functions
 # === OCR timestamp function ===
 def getDateTime(frame):
     dateTime_img = frame[0:46, 0:384, :]
@@ -198,21 +184,15 @@ def drawLandmark_line(frame, feet, hips, color):
     pt2_hips = (int(hips.x*width), int(hips.y*height)) #second point is on the hips
     thickness = 5
     cv2.line(frame,pt1_ft,pt2_hips, color, thickness) # Draw a line from the feet to the hips
-    
-def drawLandmark_square(frame, minWidth, maxWidth, minHeight, maxHeight):
-    color = [255, 0, 0] # Line will be red
-    #pt1_ft = (int(feet.x*width),int(feet.y*height)) #First point is on the feet
-    #pt2_hips = (int(hips.x*width), int(hips.y*height)) #second point is on the hips
-    xyPt = int(minWidth),int(minHeight) #upper left pt
-    XyPt = int(maxWidth), int(minHeight) #upper right pt
-    XYPt = int(maxWidth), int(maxHeight) #lower right pt
-    xYPt = int(minWidth), int(maxHeight) #lower left pt
-    thickness = 5
-    #Connects points to draw a square
-    cv2.line(frame, xyPt, XyPt, color, thickness) 
-    cv2.line(frame, XyPt, XYPt, color, thickness) #
-    cv2.line(frame, XYPt, xYPt, color, thickness)
-    cv2.line(frame, xYPt, xyPt, color, thickness)
+   
+def drawLandmark_square(frame, landmark, color, thickness = -1):
+    x_min = int(landmark.x*width -10)
+    y_min = int(landmark.y*height -10)
+    x_max = int(landmark.x*width +10)
+    y_max = int(landmark.y*height +10)
+    pt1 = x_min,y_max
+    pt2 = x_max,y_min
+    cv2.rectangle(frame,pt1,pt2,color,thickness)
 
 def isPersonInFrame(frame, frameIndex): #(frame, frameIndex)
     """
@@ -223,20 +203,16 @@ def isPersonInFrame(frame, frameIndex): #(frame, frameIndex)
         frame_timestamp_ms: The timestamp of the frame in milliseconds
         bool: True if pose landmarks are detected, False otherwise
     """
-
     frame_timestamp_ms = int(frameIndex * frameTime_ms) 
     if frame_timestamp_ms < 0 or frame_timestamp_ms > 1e10: # Check if the timestamp is valid
         return None #Exit function if the timestamp is invalid
-
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame) #Create a MediaPipe image from the frame
     pose_landmarker_result = landmarkerVideo.detect_for_video(mp_image, frame_timestamp_ms) #Detect the pose landmarks in the frame
-    
     #If there are pose landmarkers return them and the frame timestamp
     if len(pose_landmarker_result.pose_landmarks) > 0: 
         return True, pose_landmarker_result, frame_timestamp_ms
     else:
         return False, None, frame_timestamp_ms
-
 
 def crop_to_Southhall():
 
@@ -271,7 +247,6 @@ def crop_to_Northhall():
     return round(min_width), round(max_width), round(min_height), round(max_height), direction
 
 def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_height, min_width, max_width):
- 
     """
     Returns a full-size frame with the person blurred and the background untouched.
 
@@ -452,7 +427,6 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
             max_width = maintain_dim[3]
             min_width = maintain_dim[2]
     # Make sure the result isn't an empty crop
-
     if max_width <= min_width or max_height <= min_height:
     # Return the full frame as fallback
         return 0, frame_width, 0, frame_height, maintain_dim
@@ -559,6 +533,13 @@ def put_text(text, frame_array, index):
         i = i+1
         x = x + (text_width +20)
 
+def constantSize(landmarks, size_cm):
+    y_pix_height = landmarks.y*height
+    distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
+    
+    cm_per_px = (7916.1069 / (distance_from_cam + 86.1396)**2) * 100
+    px = cm / cm_per_px
+    return px
 
 # === Main code === #
 
@@ -579,7 +560,7 @@ time_tracker = timeWith_ms(frameTime_ms) #Creates object
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "North" #Default direction 
 track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
-                                  "LeftToe_Dist","RightToe_Dist", "seconds_sinceMid") 
+                                  "LeftToe_Dist","RightToe_Dist", "seconds_sinceMid") #array to track information about each frame
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
 #with open(csv_path, mode='w', newline='') as file:
@@ -602,133 +583,104 @@ videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 waitKeyP = 1
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
-    # === Reads and returns frames in video
-    if track_frames[i]['frame'] != None:
+    # === Reads and loads new frames in array
+    if track_frames[i]['frame'] is None: 
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
             exit()
         # === Saves seconds since midnight
         total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+        # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
-        resizedframe = cv2.resize(raw_frame, displayRez)
-        track_frames[i]["frame"] = resizedframe
-    else:
-        resizedframe = track_frames[i]["frame"]
+        cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
+        # ===Is there a cropped frame to send to model?
+        if newDim_Frame is not None: 
+            good = False
+        # === Returns landmarks based on person
+            good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index)
+        # === 
+            if good and result is not None:
+                landmarks = result.pose_landmarks[0]
+                landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
+                drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
+                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],5) # Blue = left toe
+                drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
+                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],5) # Red = right toe 
+                # ===resize for viewing and save in array
+                #resizedframe = cv2.resize(raw_frame, displayRez)
+                # === Get new frame dimensions           
+                min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
+                smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
+                # === Saves data to array
+                track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
+                    # === Calculates distance
+                left_distHeel = find_dist_from_y(track_frames[i]["landmarks"][29].y*height)
+                right_distHeel = find_dist_from_y(track_frames[i]["landmarks"][30].y*height)
+                left_distToe = find_dist_from_y(track_frames[i]["landmarks"][31].y*height)
+                right_distToe = find_dist_from_y(track_frames[i]["landmarks"][32].y*height)
 
-        
-    
-    
-    # === Crops and draws on full frame based on landmarks
-    
-    drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
-    if newDim_Frame is not None: #Failsafe 
-        good = False
-        # === Returns landmarks based on where the person is
-        #good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index)
-        #if good and result is not None:
-        print(f"Size of trackframes: {len(track_frames)}")
-        
-        if False:
-            # === Blurs person
-            #raw_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
-            #newDim_Frame = blur_person_cropFrame(newDim_Frame, result)
-            
-            # === Translate landmarks to full frame dimensions
-            landmarks = result.pose_landmarks[0]
-            landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
+                track_frames[i]["LeftToe_Dist"] = left_distToe # Store the left toe distance in the track_frames list
+                track_frames[i]["RightToe_Dist"] = right_distToe # Store the left toe distance in the track_frames list
+                track_frames[i]["seconds_sinceMid"] = total_seconds
 
-            # === Draw landmarks on frame
-            drawLandmark_circle(raw_frame, landmarks[29], [255,0,0],2) # Blue = left heel
-            drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],5) # Blue = left toe
-            drawLandmark_circle(raw_frame, landmarks[30], [0,0,255],2) # Red = right heel
-            drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],5) # Red = right toe 
-            # === get frame dimensions           
-            min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
-            smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
-            # === resize for viewing
-            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
-            resizedframe = cv2.resize(raw_frame, displayRez)
-
-            # === Saves data to array
-            track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
-                # === Calculates distance
-            left_distHeel = find_dist_from_y(track_frames[i]["landmarks"][29].y*height)
-            right_distHeel = find_dist_from_y(track_frames[i]["landmarks"][30].y*height)
-            left_distToe = find_dist_from_y(track_frames[i]["landmarks"][31].y*height)
-            right_distToe = find_dist_from_y(track_frames[i]["landmarks"][32].y*height)
-            track_frames[i]["LeftToe_Dist"] = left_distToe # Store the left toe distance in the track_frames list
-            track_frames[i]["RightToe_Dist"] = right_distToe # Store the left toe distance in the track_frames list
-            track_frames[i]["seconds_sinceMid"] = total_seconds
-            track_frames[i]["frame"] = resizedframe
-
-            text = [
-                f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
-                f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
-                f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
-                ]
-        
-            put_text(text, track_frames, i)
-
-        cv2.imshow("Frame from array", track_frames[i]["frame"])
-        key1 = cv2.waitKey(waitKeyP) & 0xFF  
-        
-        if key1 == 32: #Space to pause
-            if waitKeyP == 1:
-                waitKeyP = 0
-                print("Resuming...")
+                text = [
+                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
+                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
+                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
+                    ]
             else:
-                waitKeyP = 1
-                print("Pauseing...")
-        elif key1 == ord('d'):
-                    waitKeyP = 0 # If we key we want to pause
-                    #save_index = save_index - 1
-                    frame_Index -= 1
-                    if frame_Index < start_frame:
-                        print("Cannot go further back, press space to continue")
-                        #save_index = save_index + 1
-                        frame_Index = start_frame
-
-        elif key1 == ord('q'):
-            print("Quitting.")
-            exit()
-        '''
-                print("Video paused. Press space to exit, q to quit, g to go forward, d to go backwards")
-                save_index = i
-                while True: 
-                    key2 = cv2.waitKey(0) & 0xFF 
-                    if key2 == 32:  # Space again to resume
-                        print("Resuming...")
-                        break
-                    elif key2 == ord('q'):
-                        print("Quitting.")
-                        exit()
-                    elif key2 == ord('g'): #Right Arrow
-                        save_index = save_index + 1
-                        if save_index >= len(track_frames) or track_frames[save_index]["frame"] is None:
-                            print("No more frames to show, press space to continue")
-                            save_index = save_index - 1
-                            continue
-                        else:
-                            cv2.imshow("Frame from array", track_frames[save_index]["frame"])
-                            cv2.waitKey(1)
-                    elif key2 == ord('d'):
-                        save_index = save_index - 1
-                        if save_index <= 0:
-                            print("Cannot go further back, press space to continue")
-                            save_index = save_index + 1
-                            continue
-                        else:
-                                cv2.imshow("Frame from array", track_frames[save_index]["frame"])
-                                cv2.waitKey(1)
-                    else:
-                            cv2.imshow("Frame from array", track_frames[save_index]["frame"])
-                            cv2.waitKey(1)
-        '''
+                text = [
+                    f"Left Toe: 000", 
+                    f"Right Toe: 000",
+                    f"Seconds: 000"
+                    ]
+                if frame_Index % 2 ==0:
+                    min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
+                else:
+                    min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
+            # ===resize for viewing and save in array
+            resizedframe = cv2.resize(raw_frame, displayRez)
+            track_frames[i]["frame"] = resizedframe
+            put_text(text, track_frames, i)
+    else:
+        resizedframe = track_frames[i]["frame"] 
+    
+    cv2.imshow("Frame: ", resizedframe)
+    key1 = cv2.waitKey(waitKeyP) & 0xFF  
+    
+    if key1 == 32: #Space to pause
+        if waitKeyP == 1:
+            waitKeyP = 0
+            print("Pausing") 
+        else:
+            waitKeyP = 1
+            print("Resuming") 
+            frame_Index = frame_Index + 1
+    elif key1 == ord('d'):
+        waitKeyP = 0 # If we key we want to pause
+        #save_index = save_index - 1
+        frame_Index -= 1
+        if frame_Index < start_frame:
+            print("Cannot go further back, press space to continue")
+            #save_index = save_index + 1
+            frame_Index = start_frame
+    elif key1 == ord('g'):
+        waitKeyP = 0 # If we key we want to pause
+        if frame_Index >= len(track_frames):
+            print("Reached the end of video")
+            #save_index = save_index + 1
+            continue
+        else:
+            #save_index = save_index - 1
+            frame_Index += 1  
+    elif key1 == ord('q'):
+        print("Quitting.")
+        exit()
+    else:
+        frame_Index = frame_Index + 1
         
-        
-
-                            
+"""                        
 #            with open(csv_path, mode='a', newline='') as file:
 #                writer = csv.writer(file)
 #                writer.writerow([
@@ -748,10 +700,4 @@ while frame_Index < end_frame:
 #                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
 
 #                out_full.write(raw_frame)
-    #    else:
-    #        if frame_Index % 2 ==0:
-    #            min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
-    #        else:
-    #            min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-
-    frame_Index = frame_Index + 1
+"""
