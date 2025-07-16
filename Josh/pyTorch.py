@@ -165,11 +165,7 @@ model = nNet(input_size=windowLen, nClasses=len(classes))
 optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 loss_fn = nn.CrossEntropyLoss()
 
-<<<<<<< HEAD
 ## Train 
-=======
-## Training
->>>>>>> c863543 (Forgot to push the last bit)
 for epoch in range(nEpochs): 
     model.train() # PUt the model in read write
     total_loss = 0
@@ -236,7 +232,6 @@ plt.show()
 # Add toes to the classifyer
 # Why are the results not the same every time? How to fix?
 # Look at the data, what can be done to improve our results?
-# Loss function  -- MSE, RMS..
 # Optimizer -- Hill analigy
 # Normalize, standardize by window, why?
 # Globaly normalize, standardize, why? Do we want this?
