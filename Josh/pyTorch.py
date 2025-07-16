@@ -19,14 +19,13 @@ import matplotlib.pyplot as plt # Ploting
 import numpy as np
 
 ## Configurations
-plotData = False
-# Data
 dataDir = 'StudentData/25_06_18/expRuns'
-sampleFreq_hz =  30#1/0.033
-windowLen_s = 4
-strideLen_s = 1
-#classes = ["None", "Left", "Right"]
+plotData = False
+sampleFreq_hz =  1/0.033
+windowLen_s = 1
+strideLen_s = 0.5
 classes = ["None", "Heel", "Toe"]
+#classes = ["None", "Left", "Right"]
 #classes = ["None", "Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
 # Training hyperameters
@@ -166,7 +165,11 @@ model = nNet(input_size=windowLen, nClasses=len(classes))
 optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 loss_fn = nn.CrossEntropyLoss()
 
+<<<<<<< HEAD
 ## Train 
+=======
+## Training
+>>>>>>> c863543 (Forgot to push the last bit)
 for epoch in range(nEpochs): 
     model.train() # PUt the model in read write
     total_loss = 0
@@ -191,26 +194,25 @@ for epoch in range(nEpochs):
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
 
 
-## ValidatEpoch 500, Loss: 4.8402, Accuracy: 90.92%e
 # For Confusion matrix:
 all_preds = []
 all_labels = []
+correct = 0 # keep a running tab of how many we got right
 
-correct = 0
 model.eval() # Put the model in read only
-with torch.no_grad():
-    for batch_window, batch_label, _ in test_loader:
+with torch.no_grad(): # Speed up validation by skipping the gradian tracking (we don't save results anyway)
+    for batch_window, batch_label in test_loader:
         outputs = model(batch_window)
         preds = outputs.argmax(dim=1)
 
-        # Look at the results
+        # How many did we get right?
         correct += (preds == batch_label).sum().item()
         # For confusion matrix
         all_preds.extend(preds.cpu().numpy())
         all_labels.extend(batch_label.cpu().numpy())
 
-## Analize
-print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
+valSetLen_asRun = len(test_loader.dataset)
+print(f"Test Accuracy: {correct} out of {valSetLen_asRun} {100 * correct / valSetLen_asRun:.2f}%")
 
 # Compute confusion matrix
 cm = confusion_matrix(all_labels, all_preds)
@@ -227,10 +229,14 @@ plt.show()
 
 # Note, funtionalizeing of dataloader
 # Plot loss (how wrong is each guess) and accuracy (how many did we get right)
+# What does flatten do?
+# Check out what the models outputs are
+# Why is it never the same 2 times running? How to fix?
+# Plot loss and accuracy
 # Add toes to the classifyer
 # Why are the results not the same every time? How to fix?
 # Look at the data, what can be done to improve our results?
-# Normalize, standardize by window
-# Globaly normalize, standardize
 # Loss function  -- MSE, RMS..
 # Optimizer -- Hill analigy
+# Normalize, standardize by window, why?
+# Globaly normalize, standardize, why? Do we want this?
