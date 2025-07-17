@@ -282,7 +282,7 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
         dimensions: min_height, max_height, min_width, max_width --> Coordinates of the crop in full frame
 
     Returns:
-        final_frame: raw_frame-sized image with the person blurred
+        raw_frame: raw_frame-sized image with the person blurred
     """
     if result.segmentation_masks is None:
         return raw_frame
@@ -307,8 +307,8 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
     #Saves unedited pixels in locations where inverse_mask is non-zero (The location of background)
     background_clear = cv2.bitwise_and(raw_frame, raw_frame, mask=inverse_mask)
     #Adds pixels to create a frame with a blurred person and unedited background
-    final_frame = cv2.add(person_blurred, background_clear)
-    return final_frame
+    raw_frame = cv2.add(person_blurred, background_clear)
+    return raw_frame
     
 def blur_person_cropFrame(cropped_frame, result):
     """
@@ -343,94 +343,6 @@ def blur_person_cropFrame(cropped_frame, result):
     final_cropped_frame = cv2.add(person_blurred, background_clear)
     return final_cropped_frame
 
-def crop_to_ratio(frame, landmarks):
-    """
-    Crops the frame based on the pose landmarks while maintaining the original aspect ratio of the original frame 
-
-    Parameters:
-        frame: The original, uncropped frame
-        landmark: The MediaPipe result containing the pose landmarks
-
-    Returns:
-        dimension: min_width, max_width, min_height, max_height  --> Dimensions to crop the frame around person w/ aspect ratio  
-    """
-    #Checks if there are landmarkers (if none, return full frame)
-    if landmarks is None: 
-        return 0, frame.shape[1], 0, frame.shape[0] #frame.shape[1] = width, frame.shape[0] = height
-    frame_height, frame_width = frame.shape[:2] 
-    # Use only major body parts that are symmetrical and close to the torso
-    core_landmarks = [11, 12, 23, 24, 25, 26, 27, 28, 31, 32]  # shoulders, hips, knees, etc.
-    #Initiates width variables to landmark 0
-    min_width = max_width = landmarks[0].x 
-    #Initiates height variables to landmark 
-    min_height = max_height = landmarks[0].y 
-    #Iterates through all landmarks to find max and min: x value = width, y value = height
-    for i in core_landmarks:
-        x = landmarks[i].x
-        y = landmarks[i].y
-        if x < min_width:
-            min_width = x
-        if x > max_width:
-            max_width = x
-        if y < min_height:
-            min_height = y
-        if y > max_height:
-            max_height = y
-    #Normalize landmark values (0-1) to frame dimensions
-    min_width = min_width*frame_width
-    max_width = max_width*frame_width
-    min_height=min_height*frame_height
-    max_height=max_height*frame_height
-    #total width/height of cropped frame
-    tot_width = max_width - min_width   
-    tot_height = max_height - min_height
-    #Height/width ratio of full sized frame
-    Ratio = width/height 
-    #Height/width ratio of cropped frame
-    current_ratio = tot_width / tot_height 
-    #Finds the center WRT full frame by locating the center in the full frame first (W or H/ 2)
-    #then expanding it by minimum width/height of cropped frame
-    center_width = min_width + tot_width / 2 
-    center_height = min_height + tot_height / 2
-    #Change height/width ratio of cropped frame to match that of full frame
-    if current_ratio < Ratio:
-    # Too narrow: increase width (or crop height)
-        adjust_width = (tot_height * Ratio) / 2
-        min_width = center_width - adjust_width
-        max_width = center_width + adjust_width
-    else:
-    # Too wide: crop width (or increase height)
-        adjust_height = (tot_width / Ratio) / 2
-        min_height = center_height - adjust_height
-        max_height = center_height + adjust_height
-    #adjusts total width/height according to new dimensions
-    tot_width = max_width - min_width
-    tot_height = max_height - min_height
-    #adjusts center according to new dimensions
-    center_width = min_width + tot_width / 2
-    center_height = min_height + tot_height / 2
-    #Expand the crop to include more of the frame
-    scale_factor = 1.9
-    #scales total width/height
-    new_width = tot_width * scale_factor
-    new_height = tot_height * scale_factor
-    #Calculates new min/max height/width WRT to full frame by adding 
-    #center (in full frame coords) to width/height (in cropped frame coords)
-    min_width = center_width - new_width / 2
-    max_width = center_width + new_width / 2
-    min_height = center_height - new_height / 2
-    max_height = center_height + new_height / 2
-    #Ensures that crop is within bounds (0 to full frame size)
-    min_width = max(0, round(min_width))
-    max_width = min(frame_width, round(max_width))
-    min_height = max(0, round(min_height))
-    max_height = min(frame_height, round(max_height))
-    # Make sure the result isn't an empty crop
-    if max_width <= min_width or max_height <= min_height:
-    # Return the full frame as fallback
-        return 0, frame_width, 0, frame_height
-    return round(min_width), round(max_width), round(min_height), round(max_height)
-
 def crop_to_square(frame, landmarks, direction, maintain_dim):
     """
     Crops the frame based on the pose landmarks in a scaled square manner 
@@ -438,7 +350,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
     Parameters:
         frame: The original, uncropped frame
         landmark: The MediaPipe result containing the pose landmarks
-        direction: The direction  person is starting in the hallway (North or South)
+        direction: The direction  person is starting in the hallway (North or South), initially expects North
         maintain_dim: Originally set to full frame dimensions
 
     Returns:
@@ -607,25 +519,68 @@ def seconds_sinceMidnight(timeWith_ms_class,raw_frame):
     total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000 # Convert to total seconds
     return total_seconds # Return the total seconds since midnight
 
-# Main code
+def playback(frame_array, frameIndex):
+    pass
+
+def create_Trackframes(firstframe, lastframe, *definitions):
+    """
+    Initialises a list with dictionary definitions 
+    
+    Parameters:
+    firstframe: frame to start
+    lastframe: frame to end 
+    definitions: any dictionary items the user want to input (Will be initialised with None)
+
+    Returns:
+    track_frames: A list length of the total frames to be played with dictionary definitions
+    """
+    default_dict = {key: None for key in definitions} # List to store all cropped frames
+    track_frames = [default_dict.copy() for _ in range(lastframe - firstframe)] # Initialize the list with the number of frames
+    return track_frames
+
+def put_text(text, frame_array, index):
+    i = 0
+    font = cv2.FONT_HERSHEY_DUPLEX
+    scale = 0.7
+    thickness = 1
+    # Top-left corner of box
+    x, y = 10, 100
+    while i < len(text):
+        words = text[i]
+        (text_width, text_height), baseline = cv2.getTextSize(words, font, scale, thickness)
+        cv2.rectangle(
+        frame_array[index]["frame"],
+        (x - 2, y - text_height - 2),                # Top-left corner
+        (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
+        (255, 255, 255),                             # White background
+        thickness=cv2.FILLED                         # Filled rectangle
+    )
+        cv2.putText(track_frames[index]["frame"], text[i], (x, y), font, scale, (0,0,0), thickness)
+        i = i+1
+        x = x + (text_width +20)
+
+
+# === Main code === #
+
+# === Set time to start/end
 start_time = 0
 start_frame = int(start_time * fps) # Start frame for the clip
 end_time = 20 # End time for the clip in seconds
 end_frame = int(end_time * fps) # End frame for the clip
-
-# Read frames until we reach the frame prior to start frame
-#videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, start_frame-1)
-
-#initializes height/width to full size
+# === saves dimensions for first crop
 max_height = height
 min_height = 0
 max_width = width
 min_width = 0
-
+# === Initialise arrays and variables to send to functions
 maintain_dim = [0,height,0,width] # Initializes maintain dimensions
 smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [smoothed_min_h, smoothed_max_h, smoothed_min_w, smoothed_max_w]
-
-
+time_tracker = timeWith_ms(frameTime_ms) #Creates object
+alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
+direction  = "North" #Default direction 
+track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
+                                  "LeftToe_Dist","RightToe_Dist", "seconds_sinceMid") 
+# === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
 #with open(csv_path, mode='w', newline='') as file:
 #      writer = csv.writer(file)
@@ -636,247 +591,167 @@ smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [sm
 #        "LeftToe_Dist" , "RightToe_Dist",
 #    ]) 
 
-
-time_tracker = timeWith_ms(frameTime_ms)
-
-# Initialize smoothing variables
-alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
-#Initialize direction 
-direction  = "North" 
-
-
-frames_withDistance = [] # List to store all frames
-
-default_dict = {
-    "frame": None,
-    "landmarks": None,
-    "Left_ToeDist": None 
-} # List to store all cropped frames
-
-track_frames = [default_dict.copy() for _ in range(end_frame - start_frame)] # Initialize the list with the number of frames
-
-"""
-good = False
-frames_withperson = 0
-
-while frames_withperson < 5: # Loop until a person is detected or 5 frames have been processed
-    success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
-
-    if not success: # If the frame was not read successfully, break the loop
-        print("Failed to read frame")
-        exit()
-
-    good, result, adjusted_time_ms = isPersonInFrame(raw_frame, start_frame) #newDim_Frame Checks if there is a person
-    start_frame = start_frame + 1 # Increment the frame index
-    if good: 
-        frames_withperson = frames_withperson + 1 # Increment the frame index
-
-frame_Index = start_frame
-"""
-#Read through the specified frame count
-#for frame_Index in range(start_frame, end_frame): 
-#while len(frames_withDistance) < 60: # Loop until 5 frames with distance are collected
-
-frame_set = start_frame # Set the initial frame index to start_frame
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_set)
+# === Prompt for user
 print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
-i = 0
 
-for frame_Index in range(start_frame, end_frame):
-    if track_frames[(start_frame - frame_set)]["frame"] is None: # If the frame is already processed, don't send it to the model
+# === Sets the video to specified index
+frame_Index = start_frame
+videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
+
+# === Begin process of cropping, saving, and playback
+waitKeyP = 1
+while frame_Index < end_frame:
+    i = frame_Index - start_frame #index for track_frames array
+    # === Reads and returns frames in video
+    if track_frames[i]['frame'] != None:
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
             exit()
-        newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #Taking a full sized frame and
-        #Shrinking it down to dimensions
-        #Changes dimensions before finding landmarks
-        drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
-        if newDim_Frame is not None: #Failsafe 
-            good = False
-            good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index) #newDim_Frame Checks if there is a person
-            #result is the landmarks
-            if good and result is not None:
-                final_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
-                final_frameCrop = blur_person_cropFrame(newDim_Frame, result)
-                landmarks = result.pose_landmarks[0]
-                #cropped_landLeft = landmarks[29]  # Left heel
-                #cropped_landRight = landmarks[30]  # Right heel
-                drawLandmark_circle(final_frameCrop, landmarks[29], [255,0,0],2) # Blue = left heel
-                drawLandmark_circle(final_frameCrop, landmarks[31], [255,0,0],5) # Blue = left toe
-                drawLandmark_circle(final_frameCrop, landmarks[30], [0,0,255],2) # Red = right heel
-                drawLandmark_circle(final_frameCrop, landmarks[32], [0,0,255],5) # Red = right toe
-                landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height)
-                track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
-                #circle_landmarks = [15,16,30,29]  # shoulders, hips, knees, etc.
-                #line_landmarks = [16,12,15,11,12,24,24,28,11,23,23,27,12,11,24,23,10,9]
-                #for i in circle_landmarks:
-                #    drawLandmark_circle(final_frame,landmarks[i],[0,255,0],5)
-                #for i in range(0, len(line_landmarks), 2):
-                #    drawLandmark_line(final_frame, landmarks[line_landmarks[i]], landmarks[line_landmarks[i + 1]], [0, 255, 0])
-                #drawLandmark_circle(final_frame,landmarks[0],[0,255,0],15)
-                drawLandmark_circle(final_frame, landmarks[29], [255,0,0],2) # Blue = left heel
-                drawLandmark_circle(final_frame, landmarks[31], [255,0,0],5) # Blue = left toe
-                drawLandmark_circle(final_frame, landmarks[30], [0,0,255],2) # Red = right heel
-                drawLandmark_circle(final_frame, landmarks[32], [0,0,255],5) # Red = right toe            
-                min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
-                smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
-                resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
-                resizedframe = cv2.resize(final_frame, displayRez)
-                track_frames[i]["frame"] = resizedframe # Store the frame index in the track_frames list
-                # === Heel Y values (normalized and pixel)
-                #left_heel_y_norm = landmarks[29].y
-                #right_heel_y_norm = landmarks[30].y
-                left_heel_y_norm = track_frames[i]["landmarks"][29].y
-                right_heel_y_norm = track_frames[i]["landmarks"][30].y
-                left_heel_y_px = left_heel_y_norm * height
-                right_heel_y_px = right_heel_y_norm * height
-                # === Distances using your function
-                left_distHeel = find_dist_from_y(left_heel_y_px)
-                right_distHeel = find_dist_from_y(right_heel_y_px)
+        # === Saves seconds since midnight
+        total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+        newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
+        resizedframe = cv2.resize(raw_frame, displayRez)
+        track_frames[i]["frame"] = resizedframe
+    else:
+        resizedframe = track_frames[i]["frame"]
+
+        
+    
+    
+    # === Crops and draws on full frame based on landmarks
+    
+    drawLandmark_square(raw_frame, min_width, max_width, min_height, max_height) #Returns a box around the person
+    if newDim_Frame is not None: #Failsafe 
+        good = False
+        # === Returns landmarks based on where the person is
+        #good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index)
+        #if good and result is not None:
+        print(f"Size of trackframes: {len(track_frames)}")
+        
+        if False:
+            # === Blurs person
+            #raw_frame = blur_person_fullFrame(raw_frame, newDim_Frame, result, min_height, max_height, min_width, max_width)
+            #newDim_Frame = blur_person_cropFrame(newDim_Frame, result)
             
-                # === Toe Y values (normalized and pixel)
-                #left_toe_y_norm = landmarks[31].y
-                #right_toe_y_norm = landmarks[32].y
-                left_toe_y_norm = track_frames[i]["landmarks"][31].y
-                right_toe_y_norm = track_frames[i]["landmarks"][32].y
-                left_toe_y_px = left_toe_y_norm * height
-                right_toe_y_px = right_toe_y_norm * height
-                # === Distances using your function
-                left_distToe = find_dist_from_y(left_toe_y_px)
-                right_distToe = find_dist_from_y(right_toe_y_px)
-                track_frames[i]["Left_ToeDist"] = left_distToe # Store the left toe distance in the track_frames list
-                total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+            # === Translate landmarks to full frame dimensions
+            landmarks = result.pose_landmarks[0]
+            landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
 
-                
-                #frames_withDistance.append({
-                #"frame": frame_Index,
-                #"right_heel": right_distHeel,
-                #"left_heel": left_distHeel
-                #})
+            # === Draw landmarks on frame
+            drawLandmark_circle(raw_frame, landmarks[29], [255,0,0],2) # Blue = left heel
+            drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],5) # Blue = left toe
+            drawLandmark_circle(raw_frame, landmarks[30], [0,0,255],2) # Red = right heel
+            drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],5) # Red = right toe 
+            # === get frame dimensions           
+            min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
+            smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
+            # === resize for viewing
+            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez) # Resize the frame for displayd 
+            resizedframe = cv2.resize(raw_frame, displayRez)
 
+            # === Saves data to array
+            track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
+                # === Calculates distance
+            left_distHeel = find_dist_from_y(track_frames[i]["landmarks"][29].y*height)
+            right_distHeel = find_dist_from_y(track_frames[i]["landmarks"][30].y*height)
+            left_distToe = find_dist_from_y(track_frames[i]["landmarks"][31].y*height)
+            right_distToe = find_dist_from_y(track_frames[i]["landmarks"][32].y*height)
+            track_frames[i]["LeftToe_Dist"] = left_distToe # Store the left toe distance in the track_frames list
+            track_frames[i]["RightToe_Dist"] = right_distToe # Store the left toe distance in the track_frames list
+            track_frames[i]["seconds_sinceMid"] = total_seconds
+            track_frames[i]["frame"] = resizedframe
 
-    #            newDim_H, newDim_W = newDim_Frame.shape[:2]
-                #arrFrame = frames_withDistance[i]
+            text = [
+                f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
+                f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
+                f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
+                ]
+        
+            put_text(text, track_frames, i)
 
-                text = f"Left Heel: {track_frames[i]["Left_ToeDist"]:.2f}"
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                scale = 0.5
-                thickness = 1
-
-                (text_width, text_height), baseline = cv2.getTextSize(text, font, scale, thickness)
-
-                # Top-left corner of box
-                x, y = 10, 100
-
-                cv2.rectangle(
-                    track_frames[i]["frame"],
-                    (x - 2, y - text_height - 2),                # Top-left corner
-                    (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
-                    (255, 255, 255),                             # White background
-                    thickness=cv2.FILLED                         # Filled rectangle
-                )
-                cv2.putText(track_frames[i]["frame"], text, (x, y), font, scale, (0,0,0), thickness)
-            
-    #           cv2.putText(arrFrame["frame"], f"Right Heel: {arrFrame['right_heel']:.2f}", (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-    #            cv2.imshow("Frame to send model", resizedCropFrame) #displays frame
-    #            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-    #            cv2.imshow("Frame", resizedFrame) #displays frame
-    #            cv2.waitKey(1) # Wait for 1 ms to display the frame
-                cv2.imshow("Frame from array", track_frames[i]["frame"]) #displays frame
-                key1 = cv2.waitKey(0) & 0xFF  
-                if key1 == ord('q'):
-                    exit()
-                i = i + 1
-    #            with open(csv_path, mode='a', newline='') as file:
-    #                writer = csv.writer(file)
-    #                writer.writerow([
-    #                #frame_Index,
-    #                timestamp,
-    #                total_seconds,  # Convert to seconds
-    #                left_distHeel,
-    #                right_distHeel,
-    #                left_distToe,
-    #                right_distToe
-    #            ])
-                
-        # === Save to CSV (✅ append only)
-        # === Save to CSV (✅ append only)
-    #            if clip_start <= frame_Index < clip_end:
-    #                if out_full is None:
-    #                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
-
-    #                out_full.write(final_frame)
+        cv2.imshow("Frame from array", track_frames[i]["frame"])
+        key1 = cv2.waitKey(waitKeyP) & 0xFF  
+        
+        if key1 == 32: #Space to pause
+            if waitKeyP == 1:
+                waitKeyP = 0
+                print("Resuming...")
             else:
-                if frame_Index % 2 ==0:
-                    min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
-                else:
-                    min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-    #            resizedCropFrame = cv2.resize(newDim_Frame, squareDisplayRez)
-    #            cv2.imshow("Frame to send model", resizedCropFrame)
-    #            resizedFrame = cv2.resize(raw_frame, displayRez) # Resize the frame for displayd
-    #            cv2.imshow("Frame", resizedFrame) #displays frame
-    """
-    if keyboard.is_pressed('f'):  
-        key1 = cv2.waitKey(0) & 0xFF  
-        if key1 == ord('q'):
+                waitKeyP = 1
+                print("Pauseing...")
+        elif key1 == ord('d'):
+                    waitKeyP = 0 # If we key we want to pause
+                    #save_index = save_index - 1
+                    frame_Index -= 1
+                    if frame_Index < start_frame:
+                        print("Cannot go further back, press space to continue")
+                        #save_index = save_index + 1
+                        frame_Index = start_frame
+
+        elif key1 == ord('q'):
+            print("Quitting.")
             exit()
-        else: key = input("Press g to step forward, d to step back, b to jump back 10 frames:")
-        if key == 'g':  # Step forward
-            cv2.imshow
-        keyboard.wait('f')  
-    #frame_Index = frame_Index + 1 # Increment the frame index
+        '''
+                print("Video paused. Press space to exit, q to quit, g to go forward, d to go backwards")
+                save_index = i
+                while True: 
+                    key2 = cv2.waitKey(0) & 0xFF 
+                    if key2 == 32:  # Space again to resume
+                        print("Resuming...")
+                        break
+                    elif key2 == ord('q'):
+                        print("Quitting.")
+                        exit()
+                    elif key2 == ord('g'): #Right Arrow
+                        save_index = save_index + 1
+                        if save_index >= len(track_frames) or track_frames[save_index]["frame"] is None:
+                            print("No more frames to show, press space to continue")
+                            save_index = save_index - 1
+                            continue
+                        else:
+                            cv2.imshow("Frame from array", track_frames[save_index]["frame"])
+                            cv2.waitKey(1)
+                    elif key2 == ord('d'):
+                        save_index = save_index - 1
+                        if save_index <= 0:
+                            print("Cannot go further back, press space to continue")
+                            save_index = save_index + 1
+                            continue
+                        else:
+                                cv2.imshow("Frame from array", track_frames[save_index]["frame"])
+                                cv2.waitKey(1)
+                    else:
+                            cv2.imshow("Frame from array", track_frames[save_index]["frame"])
+                            cv2.waitKey(1)
+        '''
+        
+        
 
-   
-    #frame_index = 0
-    play_mode = False  # False = manual step-through, True = autoplay
-    frame_delay = 30   # ms between frames in play mode
+                            
+#            with open(csv_path, mode='a', newline='') as file:
+#                writer = csv.writer(file)
+#                writer.writerow([
+#                #frame_Index,
+#                timestamp,
+#                total_seconds,  # Convert to seconds
+#                left_distHeel,
+#                right_distHeel,
+#                left_distToe,
+#                right_distToe
+#            ])
+            
+    # === Save to CSV (✅ append only)
+    # === Save to CSV (✅ append only)
+#            if clip_start <= frame_Index < clip_end:
+#                if out_full is None:
+#                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
 
-    while 0 <= frame_index < len(frames_withDistance):
+#                out_full.write(raw_frame)
+    #    else:
+    #        if frame_Index % 2 ==0:
+    #            min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
+    #        else:
+    #            min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
 
-        # === Overlay info (frame number and time)
-    #    timestamp = str(datetime.timedelta(seconds=int(frame_index / videoOpbject.get(cv2.CAP_PROP_FPS))))
-    #    cv2.putText(frame, f"Frame: {frame_index}/{len(all_frames)-1}", (10, 30),
-    #                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    #    cv2.putText(frame, f"Time: {timestamp}", (10, 70),
-    #                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-
-        # === Your processing function could go here
-        # Example: landmarks, blurring, cropping, etc.
-        entry = frames_withDistance[frame_index]
-        resizedframe = cv2.resize(entry["frame"], displayRez)
-        cv2.imshow("Video Playback", resizedframe)  # Display the current frame
-        print(f"Left heel distance: {entry["left_heel"]}, Right heel distance: {entry["left_heel"]}")
-        if play_mode:
-            key = cv2.waitKey(frame_delay) & 0xFF
-        else:
-            key = cv2.waitKey(0) & 0xFF  # Wait indefinitely in manual mode
-
-        if key == ord('q'):
-            break
-        elif key == 77 or key == ord('d'):  # → or 'd'
-            frame_index += 1
-        elif key == 81 or key == ord('g'):  # ← or 'a'
-            frame_index -= 1
-        elif key == ord('p'):  # Toggle play/pause
-            play_mode = not play_mode
-        elif key == ord('r'):  # Rewind to beginning
-            frame_index = 0
-        elif key == ord('f'):  # Jump forward 10 frames
-            frame_index = min(frame_index + 10, len(frames_withDistance) - 1)
-        elif key == ord('b'):  # Jump back 10 frames
-            frame_index = max(frame_index - 10, 0)
-        else:
-            if play_mode:
-                frame_index += 1  # Autoplay advances automatically
-
-    cv2.destroyAllWindows()
-
-    # Release writers after loop
-    #if out_full:
-    #     out_full.release()
-    #if out_crop:
-    #    out_crop.release()
-    """
-
+    frame_Index = frame_Index + 1

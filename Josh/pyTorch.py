@@ -4,7 +4,16 @@
 #   Dr J Lab
 ###
 # Playing with pytorch
+# #
+# Week 1
 # make a dataloader and start with tensors
+# #
+# Week 2
+# Make model/train/validation workflow
+# #
+# Week 3
+# Invesitgate model
+# Data Augmentation
 ####
 
 import torch
@@ -19,19 +28,19 @@ import matplotlib.pyplot as plt # Ploting
 import numpy as np
 
 ## Configurations
-plotData = False
-# Data
 dataDir = 'StudentData/25_06_18/expRuns'
-sampleFreq_hz =  30#1/0.033
-windowLen_s = 5
-strideLen_s = 1
-#classes = ["None", "Left", "Right"]
+plotData = False
+sampleFreq_hz =  1/0.033
+windowLen_s = 1
+strideLen_s = 0.5
 classes = ["None", "Heel", "Toe"]
+#classes = ["None", "Left", "Right"]
 #classes = ["None", "Left Heel", "Right Heel", "Left Toe", "Right Toe"]
 
 # Training hyperameters
-nEpochs = 150
-learningRate = 0.001
+nEpochs = 300
+bSize = 8 # Bach Size
+learningRate = 0.0009
 
 # Make sure the runs are the same 
 seed = 1337
@@ -96,7 +105,7 @@ class SlidingWindowHeelDataset(Dataset):
             self.samples.append(window.unsqueeze(-1))  # shape: (window_size, 1)
             noStep_sum = np.sum(noStep_win)
             print(f"frame: {i}:{i+self.window_size}, noStepSum: {noStep_sum}, Label: {label}")
-            if noStep_sum > 10: 
+            if noStep_sum > 75: 
                 self.labels.append(0) 
             else:
                 self.labels.append(label) 
@@ -119,9 +128,12 @@ class nNet(nn.Module ):
     def __init__(self, input_size, nClasses):
         super(nNet, self).__init__()
         layerSize = 64
+        lay2_Size = 128
+        lay3_Size = 64
         self.fc1 = nn.Linear(input_size, layerSize)
-        self.fc2 = nn.Linear(layerSize, 128)  
-        self.fc3 = nn.Linear(128, layerSize)  
+        self.fc2 = nn.Linear(layerSize, lay2_Size)  
+        self.fc3 = nn.Linear(lay2_Size, lay3_Size)  
+        self.fc4 = nn.Linear(lay3_Size, layerSize)  
         self.classifyer = nn.Linear(layerSize, nClasses)  
 
     def forward(self, x):
@@ -129,6 +141,7 @@ class nNet(nn.Module ):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
         x = self.classifyer(x)
         return x
 
@@ -159,7 +172,7 @@ if plotData:
 train_len = int(0.8 * len(dataset))
 test_len = len(dataset) - train_len
 train_ds, test_ds = random_split(dataset, [train_len, test_len])
-train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator=g)
+train_loader = DataLoader(train_ds, batch_size=bSize, shuffle=True, generator=g)
 test_loader = DataLoader(test_ds, batch_size=32)
 
 model = nNet(input_size=windowLen, nClasses=len(classes))
@@ -182,32 +195,34 @@ for epoch in range(nEpochs):
 
         total_loss += loss.item()
         preds = outputs.argmax(dim=1)
+        #if(epoch == nEpochs-1):
+        #    print(f"Train Outs: {outputs}")
+        #    print(f"Pres: {preds}")
         correct += (preds == batch_label).sum().item()
 
     acc = 100. * correct / len(train_loader.dataset)
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
 
 
-## ValidatEpoch 500, Loss: 4.8402, Accuracy: 90.92%e
 # For Confusion matrix:
 all_preds = []
 all_labels = []
+correct = 0 # keep a running tab of how many we got right
 
-correct = 0
 model.eval() # Put the model in read only
-with torch.no_grad():
-    for batch_window, batch_label, _ in test_loader:
+with torch.no_grad(): # Speed up validation by skipping the gradian tracking (we don't save results anyway)
+    for batch_window, batch_label in test_loader:
         outputs = model(batch_window)
         preds = outputs.argmax(dim=1)
 
-        # Look at the results
+        # How many did we get right?
         correct += (preds == batch_label).sum().item()
         # For confusion matrix
         all_preds.extend(preds.cpu().numpy())
         all_labels.extend(batch_label.cpu().numpy())
 
-## Analize
-print(f"Test Accuracy: {100. * correct / len(test_loader.dataset):.2f}%")
+valSetLen_asRun = len(test_loader.dataset)
+print(f"Test Accuracy: {correct} out of {valSetLen_asRun} {100 * correct / valSetLen_asRun:.2f}%")
 
 # Compute confusion matrix
 cm = confusion_matrix(all_labels, all_preds)
@@ -224,10 +239,13 @@ plt.show()
 
 # Note, funtionalizeing of dataloader
 # Plot loss (how wrong is each guess) and accuracy (how many did we get right)
+# What does flatten do?
+# Check out what the models outputs are
+# Why is it never the same 2 times running? How to fix?
+# Plot loss and accuracy
 # Add toes to the classifyer
 # Why are the results not the same every time? How to fix?
 # Look at the data, what can be done to improve our results?
-# Normalize, standardize by window
-# Globaly normalize, standardize
-# Loss function  -- MSE, RMS..
 # Optimizer -- Hill analigy
+# Normalize, standardize by window, why?
+# Globaly normalize, standardize, why? Do we want this?
