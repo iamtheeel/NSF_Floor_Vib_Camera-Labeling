@@ -701,6 +701,7 @@ while frame_Index < end_frame:
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
 
                         # TODO: Get vibration data
+                        # send time  seconds since midnight and location of walker
 
                 track_frames[i]["toeVel"] = toeVel_mps
                 track_frames[i]["heelVel"] = toeVel_mps
