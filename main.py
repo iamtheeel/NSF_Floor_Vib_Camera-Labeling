@@ -179,6 +179,13 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 # === Functions
+def get_key(delay):  # windows is trash
+    key = cv2.waitKey(delay)
+    if key == 0 or key == 224:
+        key2 = cv2.waitKey(0)
+        return (key, key2)
+    return (key, None)
+
 # === OCR timestamp function ===
 def getDateTime(frame):
     dateTime_img = frame[0:46, 0:384, :]
@@ -737,8 +744,19 @@ while frame_Index < end_frame:
     
     cv2.imshow("Frame: ", resizedframe)
     key1 = cv2.waitKey(waitKeyP) & 0xFF  
+    key1, key2 = get_key(waitKeyP)
     print("key:", key1)
-    
+
+    if key1 in (0, 224): # windows is trash
+        if key2 == 72: key1 = 82
+            #print("↑ Up")
+        elif key2 == 80: key1 = 84
+            #print("↓ Down")
+        elif key2 == 75: key1 = 81
+            #print("← Left")
+        elif key2 == 77: key1 = 83
+            #print("→ Right")
+
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
             waitKeyP = 0
@@ -747,7 +765,7 @@ while frame_Index < end_frame:
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81 or key1 == 75: #Left Arrow:  # Back one Frame
+    elif key1 == 81: #Left Arrow:  # Back one Frame
     #elif key1 == ord('d'):  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
         #save_index = save_index - 1
@@ -765,7 +783,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83 or key1 == 77:  #Right Arrrow Step forwared One Frame
+    elif key1 == 83:  #Right Arrrow Step forwared One Frame
     #elif key1 == ord('g'):  # Step forwared One Frame
         print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
