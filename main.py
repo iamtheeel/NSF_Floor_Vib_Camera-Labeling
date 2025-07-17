@@ -128,7 +128,7 @@ displayRez = (int(width/dispFact), int(height/dispFact))
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
-    trial = [0]
+    trial = [0],
     window=5
 )
 
