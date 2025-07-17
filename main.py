@@ -128,7 +128,7 @@ displayRez = (int(width/dispFact), int(height/dispFact))
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
-    trial = [0]
+    trial = [0],
     window=5
 )
 
@@ -758,6 +758,7 @@ while frame_Index < end_frame:
             frame_Index = start_frame
     elif key1 == 84:  # Down Arrow Back one Second
     #elif key1 == ord('s'):  # Back one Second
+        print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
@@ -774,6 +775,7 @@ while frame_Index < end_frame:
             #save_index = save_index + 1
             continue             
     elif key1 == 82:  #Up Arrow Forward one second
+        print(f"forward one second: {fps} frames")
     #elif key1 == ord('h'):  # Forward one second
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
