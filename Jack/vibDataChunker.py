@@ -26,7 +26,7 @@ chToPlot = [1]  # Example: plot channels 1, 2, and 5 (1-based index)
 target_fps = 1  # Target frames per second for scrolling plot
 
 # Add manual chunk time here (as list of dicts with trial and time strings)
-manualTimechunk = [{"trial": 0, "time": "10:45:52.500000"}]
+manualTimechunk = [{"trial": 0, "time": "10:45:57.500000"}]
 window = 5
 
 ### Data Loader Functions ###
