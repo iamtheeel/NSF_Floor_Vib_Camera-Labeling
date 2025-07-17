@@ -746,7 +746,7 @@ while frame_Index < end_frame:
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81: #Left Arrow:  # Back one Frame
+    elif key1 == 81 or key1 == 75: #Left Arrow:  # Back one Frame
     #elif key1 == ord('d'):  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
         #save_index = save_index - 1
@@ -755,14 +755,15 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == ord('s'):  # Back one Second
+    elif key1 == 84:  # Down Arrow Back one Second
+    #elif key1 == ord('s'):  # Back one Second
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83:  #Right Arrrow Step forwared One Frame
+    elif key1 == 83 or key1 == 77:  #Right Arrrow Step forwared One Frame
     #elif key1 == ord('g'):  # Step forwared One Frame
         print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
@@ -771,7 +772,8 @@ while frame_Index < end_frame:
             print("Reached the end of video")
             #save_index = save_index + 1
             continue             
-    elif key1 == ord('h'):  # Forward one second
+    elif key1 == 82:  #Up Arrow Forward one second
+    #elif key1 == ord('h'):  # Forward one second
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
         if i >= len(track_frames):
