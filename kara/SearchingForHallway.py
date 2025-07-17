@@ -37,8 +37,8 @@ Playback = True
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
-#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #Bad Run:
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
@@ -80,8 +80,8 @@ Playback = True
 #file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
-file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
@@ -512,41 +512,66 @@ def create_Trackframes(firstframe, lastframe, *definitions):
     track_frames = [default_dict.copy() for _ in range(lastframe - firstframe)] # Initialize the list with the number of frames
     return track_frames
 
-def put_text(text, frame_array, index):
-    i = 0
+def put_text(text_array, frame_array, frame_arrayIndex):
+    """
+    Adds text from a dictionary to a frame with the same index 
+    
+    Parameters:
+    text_array: An array of strings
+    frame_array: An array of frames and information about walking pace associated
+    with each frame
+    frame_arrayIndex: The index of the frame to put text
+
+    Returns:
+    Nothing. The frames are mutable
+    """
+    text_arrayIndex = 0
     font = cv2.FONT_HERSHEY_DUPLEX
     scale = 0.7
     thickness = 1
-    # Top-left corner of box
-    x, y = 10, 100
-    while i < len(text):
-        words = text[i]
-        (text_width, text_height), baseline = cv2.getTextSize(words, font, scale, thickness)
+    x, y = 10, 100  #Coordinates initialised to top-left corner of frame
+    while text_arrayIndex < len(text_array): #Iterate through text_aray
+        words = text_array[text_arrayIndex] #Save string at index to words
+        (text_width, text_height), baseline = cv2.getTextSize(words, font, scale, thickness) #
         cv2.rectangle(
-        frame_array[index]["frame"],
+        frame_array[frame_arrayIndex]["frame"],
         (x - 2, y - text_height - 2),                # Top-left corner
         (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
         (255, 255, 255),                             # White background
         thickness=cv2.FILLED                         # Filled rectangle
     )
-        cv2.putText(track_frames[index]["frame"], text[i], (x, y), font, scale, (0,0,0), thickness)
-        i = i+1
+        cv2.putText(track_frames[frame_arrayIndex]["frame"], text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
+        text_arrayIndex = text_arrayIndex+1
         x = x + (text_width +20)
 
-def constantSize(landmarks, size_cm):
-    y_pix_height = landmarks.y*height
-    distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
-    
-    cm_per_px = (7916.1069 / (distance_from_cam + 86.1396)**2) * 100
-    px = cm / cm_per_px
-    return px
+def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
+    y_pix_height = landmarks.y* height
+    #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
+    total_frames = end_F - start_F 
+    cm_per_px = (7916.1069 / (y_pix_height + 86.1396)**2) * 100
+    raw_px = size_cm / cm_per_px
+    # Normalize frame progress between 0 and 1
+    progress = (frame_I - start_F) / total_frames
+    progress = max(0, min(progress, 1))  # Ensures frame_index is within range
+    # Define a target multiplier as a function of frame progress
+    # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
+    target_multiplier = 1 + 6 * progress
+    target_px = raw_px * target_multiplier
+
+    # If this is the first frame, no previous px to smooth from
+    if prev_px is None:
+        smoothed_px = target_px
+    else:
+        smoothed_px = alpha * target_px + (1 - alpha) * prev_px
+
+    return int(smoothed_px), smoothed_px
 
 # === Main code === #
 
 # === Set time to start/end
-start_time = 0
+start_time = 10
 start_frame = int(start_time * fps) # Start frame for the clip
-end_time = 20 # End time for the clip in seconds
+end_time = 30 # End time for the clip in seconds
 end_frame = int(end_time * fps) # End frame for the clip
 # === saves dimensions for first crop
 max_height = height
@@ -561,6 +586,8 @@ alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "North" #Default direction 
 track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
                                   "LeftToe_Dist","RightToe_Dist", "seconds_sinceMid") #array to track information about each frame
+prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
+
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
 #with open(csv_path, mode='w', newline='') as file:
@@ -603,12 +630,12 @@ while frame_Index < end_frame:
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
-                drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
-                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],5) # Blue = left toe
-                drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
-                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],5) # Red = right toe 
-                # ===resize for viewing and save in array
-                #resizedframe = cv2.resize(raw_frame, displayRez)
+                #drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
+                constPixL, prevPix[0] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[0])
+                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],constPixL) # Blue = left toe
+                #drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
+                constPixR, prevPix[1] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[1])
+                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],constPixR) # Red = right toe 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
@@ -665,9 +692,16 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
+    elif key1 == ord('s'):
+        waitKeyP = 0
+        frame_Index -=30
+        if frame_Index < start_frame:
+            print("Cannot go further back, press space to continue")
+            #save_index = save_index + 1
+            frame_Index = start_frame
     elif key1 == ord('g'):
         waitKeyP = 0 # If we key we want to pause
-        if frame_Index >= len(track_frames):
+        if i >= len(track_frames):
             print("Reached the end of video")
             #save_index = save_index + 1
             continue
