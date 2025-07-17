@@ -9,12 +9,12 @@ def compute_velocity_and_r2(label, data):
     if len(times) < 2:
         return (label, None, None)
 
-    A = np.vstack([times, np.ones_like(times)]).T
-    m, b = np.linalg.lstsq(A, dists, rcond=None)[0]
+    A = np.vstack([times, np.ones_like(times)]).T #design matrix A for linear regression using least squares
+    m, b = np.linalg.lstsq(A, dists, rcond=None)[0] #linear least squares function
     y_pred = m * times + b
-    ss_res = np.sum((dists - y_pred) ** 2)
-    ss_tot = np.sum((dists - np.mean(dists)) ** 2)
-    r2 = 1 - (ss_res / ss_tot)
+    ss_res = np.sum((dists - y_pred) ** 2) #residual sum of squares
+    ss_tot = np.sum((dists - np.mean(dists)) ** 2) #total sum of squares
+    r2 = 1 - (ss_res / ss_tot) #1.0 = perfect fit, 0.0 = no fit
 
     print(f"✅ {label}: velocity = {m:.4f} m/s | R² = {r2:.4f}")
     return (label, m, r2)
