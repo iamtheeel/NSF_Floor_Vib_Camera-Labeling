@@ -4,7 +4,16 @@
 #   Dr J Lab
 ###
 # Playing with pytorch
+# #
+# Week 1
 # make a dataloader and start with tensors
+# #
+# Week 2
+# Make model/train/validation workflow
+# #
+# Week 3
+# Invesitgate model
+# Data Augmentation
 ####
 
 import torch
@@ -30,7 +39,8 @@ classes = ["None", "Heel", "Toe"]
 
 # Training hyperameters
 nEpochs = 300
-learningRate = 0.0005
+bSize = 8 # Bach Size
+learningRate = 0.0009
 
 # Make sure the runs are the same 
 seed = 1337
@@ -118,9 +128,12 @@ class nNet(nn.Module ):
     def __init__(self, input_size, nClasses):
         super(nNet, self).__init__()
         layerSize = 64
+        lay2_Size = 128
+        lay3_Size = 64
         self.fc1 = nn.Linear(input_size, layerSize)
-        self.fc2 = nn.Linear(layerSize, 128)  
-        self.fc3 = nn.Linear(128, layerSize)  
+        self.fc2 = nn.Linear(layerSize, lay2_Size)  
+        self.fc3 = nn.Linear(lay2_Size, lay3_Size)  
+        self.fc4 = nn.Linear(lay3_Size, layerSize)  
         self.classifyer = nn.Linear(layerSize, nClasses)  
 
     def forward(self, x):
@@ -128,6 +141,7 @@ class nNet(nn.Module ):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
         x = self.classifyer(x)
         return x
 
@@ -158,7 +172,7 @@ if plotData:
 train_len = int(0.8 * len(dataset))
 test_len = len(dataset) - train_len
 train_ds, test_ds = random_split(dataset, [train_len, test_len])
-train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator=g)
+train_loader = DataLoader(train_ds, batch_size=bSize, shuffle=True, generator=g)
 test_loader = DataLoader(test_ds, batch_size=32)
 
 model = nNet(input_size=windowLen, nClasses=len(classes))
