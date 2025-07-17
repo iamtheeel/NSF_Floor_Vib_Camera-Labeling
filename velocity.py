@@ -20,14 +20,14 @@ def compute_velocity_and_r2(label, data):
     return (label, m, r2)
 
 # === Velocity: Average Heels ===
-def calculate_avg_heel_velocity(landmark_data, verbose=True): #verbose controls whether the function prints progress or result messages to the console.
+def calculate_avg_heel_velocity(distance_data, lastDataPoint, nPoints, verbose=True): #verbose controls whether the function prints progress or result messages to the console.
                                                               #If true, it will print messages; if false, it will not.
-    left = landmark_data.get("LeftHeel", [])
-    right = landmark_data.get("RightHeel", [])
+    left_m = distance_data[lastDataPoint].get("LeftHeel_Dist", [])
+    right_m = distance_data[lastDataPoint].get("RightHeel_Dist", [])
 
     # Align timestamps
-    times_left = {t for t, _ in left}
-    times_right = {t for t, _ in right}
+    times_left = {t for t, _ in left_m}
+    times_right = {t for t, _ in right_m}
     common_times = sorted(times_left & times_right) #only compare Left and Right distances from the same video frames.
 
     if len(common_times) < 2:
@@ -35,8 +35,8 @@ def calculate_avg_heel_velocity(landmark_data, verbose=True): #verbose controls 
             print("⚠️ AvgHeels: Not enough common timestamps.")
         return ("AvgHeels", None, None)
 
-    left_dict = dict(left)
-    right_dict = dict(right)
+    left_dict = dict(left_m)
+    right_dict = dict(right_m)
 
     avg_distances = [(t, (left_dict[t] + right_dict[t]) / 2) for t in common_times]
     times = np.array([t for t, _ in avg_distances])
@@ -55,13 +55,37 @@ def calculate_avg_heel_velocity(landmark_data, verbose=True): #verbose controls 
     return ("AvgHeels", m, r2)
 
 # === Velocity: Average Toes ===
-def calculate_avg_toe_velocity(landmark_data, verbose=True):
-    left = landmark_data.get("LeftToe", [])
-    right = landmark_data.get("RightToe", [])
+# for how long of a window
+# what is our fps
+def calculate_avg_landMark_velocity(landmark_data, left, right, curentFrame, nPoints, verbose=True):
+    seconds_np = np.array([entry["seconds_sinceMid"] for entry in landmark_data[curentFrame-nPoints:curentFrame]])
+    left_np = np.array([entry[left] for entry in landmark_data[curentFrame-nPoints:curentFrame]])
+    right_np = np.array([entry[right] for entry in landmark_data[curentFrame-nPoints:curentFrame]])
+
+
+    # lstsq needs multi dim for times. We have 2 outputs m, b, so we need 2 inputs: linear algibra
+    A = np.vstack([seconds_np, np.ones_like(seconds_np)]).T  # Shape becomes (30, 2) 
+    #print(f"shapes seconds: {seconds_np.shape}, left_np: {left_np.shape}, right: {right_np.shape}, A: {A.shape}")
+    m_l, b_l = np.linalg.lstsq(A, left_np, rcond=None)[0] #rcond: precision, [0]: just give me the m and b (solution), don't bother with: residuals, rank, singular_values
+    m_r, b_r = np.linalg.lstsq(A, right_np, rcond=None)[0] #rcond: precision, [0]: just give me the m and b (solution), don't bother with: residuals, rank, singular_values
+
+    m = (m_l +m_r)/2 # Average speeds of left and right
+    #TODO: Do we need the R^2?
+
+    if verbose:
+        print(f"✅ velocity left{m_l:.3f}, right: {m_r:.3f}, ave: {m:.3f}")
+
+    return m
+
+    left_m = landmark_data[curentFrame].get(left, [])
+    right_m = landmark_data[curentFrame].get(right, [])
+
+
+
 
     # Align timestamps
-    times_left = {t for t, _ in left}
-    times_right = {t for t, _ in right}
+    times_left = {t for t, _ in left_m}
+    times_right = {t for t, _ in right_m}
     common_times = sorted(times_left & times_right)
 
     if len(common_times) < 2:
@@ -69,7 +93,7 @@ def calculate_avg_toe_velocity(landmark_data, verbose=True):
             print("⚠️ AvgToes: Not enough common timestamps.")
         return ("AvgToes", None, None)
 
-    left_dict = dict(left)
+    left_dict = dict(left_m)
     right_dict = dict(right)
 
     avg_distances = [(t, (left_dict[t] + right_dict[t]) / 2) for t in common_times]

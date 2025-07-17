@@ -17,7 +17,6 @@ from scipy.signal import decimate
 
 ### Global Settings ###
 dataTimeRange_s = [0, 0]  # [0 0] for full dataset
-dataFreqRange_hz = [0, 0]
 oldData = False
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_07-10'
 dataFile = "Jack_clockTest_interuptVPoll.hdf5"
@@ -60,7 +59,6 @@ def loadPeramiters(dataFile):
     fs_hz, dataCapUnits = get_peram(filePerams, 'fs', asStr=oldData)
     recordLen_s, _ = get_peram(filePerams, 'record_length', asStr=oldData)
     preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
-    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = fs_hz / 2
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(recordLen_s)
     return fs_hz, recordLen_s, preTrigger_s, nTrials
 

@@ -1,13 +1,28 @@
+####
+#   STARS Summer 2025
+#   Dr J Lab
+###
+# Label Vibration Data with walking pace from camera
+####
+
+
+##
+# Pause = Space, 
+# Forward = g
+#Backwards = d
+#Backwards by 1 second = s
+
 ## Imports
 #Built ins
-import time
+#import time
+#import datetime
 
 #Third party
 import cv2 # opencv-python
 import pytesseract # pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
-import csv
+#import csv
 
 # Media Pipe
 import mediapipe as mp
@@ -15,9 +30,12 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
 import os
+from vibDataChunker import vibDataWindow
 #import keyboard
 
-import datetime
+# Our stuff
+from velocity import calculate_avg_landMark_velocity 
+
 # === Fix import path to reach distance_position.py ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from distance_position import find_dist_from_y  # ✅ Import your custom function
@@ -105,6 +123,17 @@ frameTime_ms = 1000/fps #How long of a time does each frame cover
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 
+#vibration properties
+vib = vibDataWindow(
+    dir_path=r'STARS\StudentData\25_07-10',
+    data_file="Jack_clockTest_interuptVPoll.hdf5",
+    trial_to_plot =[1],
+    ch_to_plot=[1],
+    old_data=False,
+    window=5
+)
+
+
 """
 # Define video writers (90-frame clip, initialized when needed)
 out_full = None
@@ -130,7 +159,8 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
-model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
+#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -573,6 +603,7 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 
 # === Set time to start/end
 start_time = 10
+
 start_frame = int(start_time * fps) # Start frame for the clip
 end_time = 30 # End time for the clip in seconds
 end_frame = int(end_time * fps) # End frame for the clip
@@ -588,8 +619,12 @@ time_tracker = timeWith_ms(frameTime_ms) #Creates object
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "North" #Default direction 
 track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
-                                  "LeftToe_Dist","RightToe_Dist", "seconds_sinceMid") #array to track information about each frame
+                                  "LeftToe_Dist","RightToe_Dist", "RightHeel_Dist", "LeftHeel_Dist", 
+                                  "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
 prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
+
+windowLen_s = 5
+windowInc_s = 1
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -611,6 +646,7 @@ videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 
 # === Begin process of cropping, saving, and playback
 waitKeyP = 1
+toeVel_mps = 0
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
@@ -652,14 +688,33 @@ while frame_Index < end_frame:
 
                 track_frames[i]["LeftToe_Dist"] = left_distToe # Store the left toe distance in the track_frames list
                 track_frames[i]["RightToe_Dist"] = right_distToe # Store the left toe distance in the track_frames list
+                track_frames[i]["RightHeel_Dist"] = right_distHeel
+                track_frames[i]["LeftHeel_Dist"] = left_distHeel 
+                
                 track_frames[i]["seconds_sinceMid"] = total_seconds
+                # Calculate the walking speed 
+                # Every n seconds (how many frames is that)
+                if i >= windowLen_s*fps: # don't run if we don't have a windows worth of data
+                    if i % (windowInc_s*fps) == 0: # run every overlap
+                        #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps)
+                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
+
+                        # TODO: Get vibration data
+
+                track_frames[i]["toeVel"] = toeVel_mps
+                track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
                     f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
                     f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
+                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f}",
+                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f}",
                     f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
                     ]
-            else:
+                
+                # TODO: Add vibration data to frame
+            else: # not good or no result
                 text = [
                     f"Left Toe: 000", 
                     f"Right Toe: 000",
@@ -714,7 +769,8 @@ while frame_Index < end_frame:
     elif key1 == ord('q'):
         print("Quitting.")
         exit()
-    else:
+
+    if waitKeyP != 0:
         frame_Index = frame_Index + 1
         
 """                        
