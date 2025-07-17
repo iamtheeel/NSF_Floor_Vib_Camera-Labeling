@@ -737,6 +737,7 @@ while frame_Index < end_frame:
     
     cv2.imshow("Frame: ", resizedframe)
     key1 = cv2.waitKey(waitKeyP) & 0xFF  
+    print("key:", key1)
     
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
@@ -757,6 +758,7 @@ while frame_Index < end_frame:
             frame_Index = start_frame
     elif key1 == 84:  # Down Arrow Back one Second
     #elif key1 == ord('s'):  # Back one Second
+        print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
@@ -773,6 +775,7 @@ while frame_Index < end_frame:
             #save_index = save_index + 1
             continue             
     elif key1 == 82:  #Up Arrow Forward one second
+        print(f"forward one second: {fps} frames")
     #elif key1 == ord('h'):  # Forward one second
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
