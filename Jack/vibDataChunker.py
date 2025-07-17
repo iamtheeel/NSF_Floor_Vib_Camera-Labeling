@@ -26,7 +26,8 @@ chToPlot = [1]  # Example: plot channels 1, 2, and 5 (1-based index)
 target_fps = 1  # Target frames per second for scrolling plot
 
 # Add manual chunk time here (as list of dicts with trial and time strings)
-manualTimechunk = [{"trial": 0, "time": "10:45:54.500000"}]
+manualTimechunk = [{"trial": 0, "time": "10:45:52.500000"}]
+window = 5
 
 ### Data Loader Functions ###
 def print_attrs(name, obj):
@@ -93,7 +94,7 @@ def sliceTheData(dataBlock: np.ndarray, chList, timeRange_sec, dataCapRate, tria
 def time_to_seconds(t):
     return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6
 
-def showDataAtTime(target_time_str, dataBlock, trigger_time, chList, dataCapRate, trial_num, window_s=5, preTrigger=0):
+def showDataAtTime(target_time_str, dataBlock, trigger_time, chList, dataCapRate, trial_num, window_s, preTrigger=0):
     if isinstance(target_time_str, str):
         target_time_obj = datetime.strptime(target_time_str, "%H:%M:%S.%f").time()
     else:
@@ -102,10 +103,16 @@ def showDataAtTime(target_time_str, dataBlock, trigger_time, chList, dataCapRate
     trigger_sec = time_to_seconds(trigger_time.time()) - preTrigger
     target_sec = time_to_seconds(target_time_obj)
 
-    time_offset_sec = target_sec - trigger_sec
-    if time_offset_sec < 0 or time_offset_sec + window_s > dataBlock.shape[1] / dataCapRate:
-        print(f"Requested time {target_time_str} is out of bounds.")
-        return
+    time_offset_sec = target_sec - trigger_sec - window_s
+    if time_offset_sec < 0:
+        if time_offset_sec > -window_s:
+            time_offset_redefine = time_offset_sec
+            window_s = window_s + time_offset_redefine
+            time_offset_sec = 0
+        else: 
+            print(f"Requested time {target_time_str} is out of bounds.")
+            return
+
 
     print(f"Jumping to {time_offset_sec:.3f}s after trigger for trial {trial_num}")
 
@@ -119,8 +126,8 @@ def showDataAtTime(target_time_str, dataBlock, trigger_time, chList, dataCapRate
     for i, ch in enumerate(chList):
         plt.plot(time_axis, sliced_data[i], label=f"Ch {ch}")
     plt.title(f"Trial {trial_num} - Time {target_time_str}")
-    plt.xlabel("Time (s since file start)")
-    plt.ylabel("Amplitude")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Vibration (gs)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -140,4 +147,4 @@ for chunk in manualTimechunk:
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=chunk['trial'])
     showDataAtTime(
         target_time_str=chunk['time'], dataBlock=dataBlock_numpy, trigger_time=triggerTime,
-        chList=chToPlot, dataCapRate=dataCapRate_hz, trial_num=chunk['trial'], preTrigger=preTrigger_s)
+        chList=chToPlot, dataCapRate=dataCapRate_hz, trial_num=chunk['trial'], window_s=window, preTrigger=preTrigger_s)
