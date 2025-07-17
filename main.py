@@ -35,6 +35,7 @@ from vibDataChunker import vibDataWindow
 
 # Our stuff
 from velocity import calculate_avg_landMark_velocity 
+from cv2Utils import overlay_image
 
 # === Fix import path to reach distance_position.py ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -575,7 +576,7 @@ def put_text(text_array, frame_array, frame_arrayIndex):
     )
         cv2.putText(track_frames[frame_arrayIndex]["frame"], text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
         text_arrayIndex = text_arrayIndex+1
-        x = x + (text_width +20)
+        y = y + (text_height +20)
 
 def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
@@ -700,8 +701,12 @@ while frame_Index < end_frame:
                         heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps)
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
 
-                        # TODO: Get vibration data
+                        # TODO:Jack Get vibration data
                         # send time  seconds since midnight and location of walker
+                        # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
+                        vibImage_rgba = None
+                        resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
+
 
                 track_frames[i]["toeVel"] = toeVel_mps
                 track_frames[i]["heelVel"] = toeVel_mps
@@ -743,7 +748,8 @@ while frame_Index < end_frame:
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == ord('d'):
+    elif key1 == 81: #Left Arrow:  # Back one Frame
+    #elif key1 == ord('d'):  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
         #save_index = save_index - 1
         frame_Index -= 1
@@ -751,22 +757,29 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == ord('s'):
+    elif key1 == ord('s'):  # Back one Second
         waitKeyP = 0
-        frame_Index -=30
+        frame_Index -= fps
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == ord('g'):
+    elif key1 == 83:  #Right Arrrow Step forwared One Frame
+    #elif key1 == ord('g'):  # Step forwared One Frame
+        print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
+        frame_Index += 1 
         if i >= len(track_frames):
             print("Reached the end of video")
             #save_index = save_index + 1
-            continue
-        else:
-            #save_index = save_index - 1
-            frame_Index += 1  
+            continue             
+    elif key1 == ord('h'):  # Forward one second
+        waitKeyP = 0 # If we key we want to pause
+        frame_Index += fps
+        if i >= len(track_frames):
+            print("Reached the end of video")
+            #save_index = save_index + 1
+            continue                   
     elif key1 == ord('q'):
         print("Quitting.")
         exit()
