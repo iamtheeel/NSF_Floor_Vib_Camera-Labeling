@@ -17,9 +17,6 @@ dataFreqRange_hz = [0,0] # will want this later
 oldData = False
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_07-10'
 dataFile = "Jack_clockTest_interuptVPoll.hdf5"
-
-
-
 dirFile = f"{dir}/{dataFile}"
 
 # What data are we interested in
@@ -28,7 +25,6 @@ chToPlot = [1, 2, 3, 4, 5, 6, 7, 10]
 # Libraries needed
 import csv
 from datetime import datetime
-from datetime import timedelta
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
@@ -270,32 +266,35 @@ def downSampleData(data, dataCapRate, downSample):
 
     return downSampled_data, dataCapRate/downSample
 
-def csvOutput(plotChList, xAxis_data, dataBlockToSave, downSample=False):
-    '''Info:
-    plotChList, xAxis_data, dataBlockToSave
-    downSample: false by default, must be set to true if you want two separate file outputs
-    for downsample and nondownsample, otherwise it's whatever comes last'''
-    if downSample == True:
-        csv_filename = f"trial_{trial}_graph_output_downsamp.csv"
-        csv_file = f"{csv_path}/{csv_filename}"
-    else:
-        csv_filename = f"trial_{trial}_graph_output.csv"
-        csv_file = f"{csv_path}/{csv_filename}"
+def csvOutput(plotChList, xAxis_data, dataBlockToSave):
     with open(csv_file, mode='w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         header = ["Time"] + [f"Ch{ch}" for ch in plotChList]
         writer.writerow(header)
-        secSinceMidnt = ((triggerTime - triggerTime.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds())
-        timeAdj = xAxis_data + secSinceMidnt - preTrigger_s
         # Write data: each row is [time, ch1_val, ch2_val, ...]
-        min_len = min(len(timeAdj), dataBlockToSave.shape[1])
-        for t_idx in range(min_len):
-            row = [timeAdj[t_idx]]
+        for t_idx in range(len(xAxis_data)):
+            row = [xAxis_data[t_idx]]
             for ch_idx in range(len(plotChList)):
                 row.append(dataBlockToSave[ch_idx, t_idx])
             writer.writerow(row)
     return
 
+def intervalOutput(dataBlock_sliced, dataCapRate_hz):
+    interval_sec = 5
+    n_points = int(interval_sec * dataCapRate_hz)
+    data_last = dataBlock_sliced[:, -n_points:]
+    t = np.linspace(-interval_sec, 0, n_points)
+
+    plt.figure(figsize=(10, 6))
+    for i in range(data_last.shape[0]):
+        plt.plot(t, data_last[i], label=f'Ch {i+1}')
+    plt.xlabel("Time (s, last 5 seconds)")
+    plt.ylabel("Vibration")
+    plt.title("Last 5 Seconds of Vibration Data")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    return
 
 #### Do the stuff
 # Load the data 
@@ -309,16 +308,17 @@ downSampleRate = 2
 for trial in range(nTrials): # Cycle through the trials
 #for i, trial in enumerate(trialList): # Cycle through the trials
     csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData"
+    csv_filename = f"trial_{trial}_graph_output.csv"
+    csv_file = f"{csv_path}/{csv_filename}"
 
-    print(f"Running Trial: {trial}")
     dataBlock_numpy, triggerTime = loadData(dataFile=dirFile, trial=trial) #.copy()
 
-    #Plot before downSam
+    #Plot before downSample
     dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=fileDataCapRate_hz) # -1 if the data is already with the trial
+    print(f"data length pre cut {dataBlock_numpy.shape}")
     timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", extraTitle="Full Res")
-    csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
 
     if downSampleRate > 1: 
         dataBlock_numpy, dataCapRate_hz = downSampleData(dataBlock_numpy, fileDataCapRate_hz, downSampleRate) #4x downsample... may need fudging, have not tryed in minCaseEx
@@ -330,13 +330,13 @@ for trial in range(nTrials): # Cycle through the trials
     dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s, dataCapRate=dataCapRate_hz) # -1 if the data is already with the trial
     #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
     #print(f"Data len: {dataBlock_sliced.shape}")
-    #csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced, downSample=True)
 
     # Plot the data in the time domain
     #timeYRange = 0.01
     #timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+    csvOutput(plotChList=chToPlot, xAxis_data=timeSpan, dataBlockToSave=dataBlock_sliced)
 
     freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
