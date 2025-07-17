@@ -129,6 +129,17 @@ def showDataAtTime(target_time_str, dataBlock, trigger_time, chList, dataCapRate
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+  
+    
+    from matplotlib.backends.backend_agg import FigureCanvasAgg #as FigureCanvas
+    fig=plt.gcf()#get the figure
+    canv = FigureCanvasAgg(fig) # make a canvas
+    canv.draw()  # make the memory do the thing
+    buf=canv.buffer_rgba() # a buffer of the image
+    img_rgba = np.asarray(buf)  # Return 
+    ## TO load it: img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_RGBA2BGR)
+    ##             We will work on overlaying it later...
+
     plt.show()
 
 
