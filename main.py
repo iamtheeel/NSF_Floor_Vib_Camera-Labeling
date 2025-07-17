@@ -737,6 +737,7 @@ while frame_Index < end_frame:
     
     cv2.imshow("Frame: ", resizedframe)
     key1 = cv2.waitKey(waitKeyP) & 0xFF  
+    print("key:", key1)
     
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
