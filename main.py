@@ -674,6 +674,7 @@ waitKeyP = 1
 toeVel_mps = 0
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
+    print(f"frame_Index: {frame_Index}, i: {i}")
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
@@ -760,9 +761,12 @@ while frame_Index < end_frame:
             track_frames[i]["frame"] = resizedframe
             put_text(text, track_frames, i)
     else:
+        print(f"get frame from i: {i}")
         resizedframe = track_frames[i]["frame"] 
     
     cv2.imshow("Frame: ", resizedframe)
+
+    # Navigation
     key1 = cv2.waitKey(waitKeyP) #& 0xFF  
     #key1 = get_key(waitKeyP)
     #print(f"key: {key1}")
@@ -777,11 +781,9 @@ while frame_Index < end_frame:
             frame_Index = frame_Index + 1
     elif key1 == 81 or key1 ==2 or key1 == ord('d'): #Left Arrow:  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
-        #save_index = save_index - 1
         frame_Index -= 1
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
     elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
         print(f"back one second: {fps} frames")
@@ -789,30 +791,30 @@ while frame_Index < end_frame:
         frame_Index -= fps
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
     elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
         print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
-        if i >= len(track_frames):
+        if (frame_Index - start_frame) >= len(track_frames):
             print("Reached the end of video")
-            #save_index = save_index + 1
-            continue             
+            frame_Index -= 1 
+            #continue             
     elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
         print(f"forward one second: {fps} frames")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
-        if i >= len(track_frames):
-            print("Reached the end of video")
-            #save_index = save_index + 1
-            continue                   
+        #if i >= len(track_frames):
+        if track_frames[frame_Index - start_frame]['frame'] is None:
+            frame_Index -= fps
+            print("Reached the end of buffered video")
+            #continue                   
     elif key1 == ord('q'):
         print("Quitting.")
         exit()
 
-    if waitKeyP != 0:
-        frame_Index = frame_Index + 1
+    # If we are not paulsed go to the next frame
+    if waitKeyP != 0: frame_Index = frame_Index + 1 
         
 """                        
 #            with open(csv_path, mode='a', newline='') as file:
