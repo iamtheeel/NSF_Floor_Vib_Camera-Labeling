@@ -19,13 +19,13 @@
 
 #Third party
 import cv2 # opencv-python
-import pytesseract # pytesseract
+import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
 #import csv
 
 # Media Pipe
-import mediapipe as mp
+import mediapipe as mp  # pip install mediapipe
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
@@ -775,8 +775,7 @@ while frame_Index < end_frame:
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81 or key1 == ord('d'): #Left Arrow:  # Back one Frame
-    #elif key1 == ord('d'):  # Back one Frame
+    elif key1 == 81 or key1 ==2 or key1 == ord('d'): #Left Arrow:  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
         #save_index = save_index - 1
         frame_Index -= 1
@@ -784,8 +783,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 84 or key1 == ord('s'):  # Down Arrow Back one Second
-    #elif key1 == ord('s'):  # Back one Second
+    elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
         print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
@@ -793,7 +791,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
+    elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
         print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
@@ -801,7 +799,7 @@ while frame_Index < end_frame:
             print("Reached the end of video")
             #save_index = save_index + 1
             continue             
-    elif key1 == 82 or key1 == ord('h'):  #Up Arrow Forward one second
+    elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
         print(f"forward one second: {fps} frames")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
