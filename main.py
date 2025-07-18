@@ -56,8 +56,8 @@ Playback = True
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
-dir = r"StudentData/25_06_18/subject_2"
+dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData/25_06_18/subject_2"
 file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #Bad Run:
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
