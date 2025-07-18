@@ -179,15 +179,31 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 # === Functions
-def get_key(delay):  # windows is trash
-    key = cv2.waitKey(delay)
-    if key == -1:
-        return (key, None)  # No key pressed
+def get_key(delay=0):
+    key1 = cv2.waitKey(delay) & 0xFF
 
-    if key == 0 or key == 224:
-        key2 = cv2.waitKey(0)
-        return (key, key2)
-    return (key, None)
+    if key1 == 255:
+        return None  # No key was pressed (in non-blocking mode)
+
+    # Windows special key handling
+    if key1 in [0, 224]:
+        key2 = cv2.waitKey(0) & 0xFF
+        return {
+            72: 'up',
+            80: 'down',
+            75: 'left',
+            77: 'right'
+        }.get(key2, None)
+
+    # Unix-style arrow keys and normal keys
+    return {
+        27: 'esc',
+        ord('q'): 'q',
+        81: 'left',   # ← on Unix
+        82: 'up',     # ↑
+        83: 'right',  # →
+        84: 'down'    # ↓
+    }.get(key1, chr(key1) if 32 <= key1 <= 126 else None)
 
 # === OCR timestamp function ===
 def getDateTime(frame):
@@ -747,9 +763,10 @@ while frame_Index < end_frame:
     
     cv2.imshow("Frame: ", resizedframe)
     #key1 = cv2.waitKey(waitKeyP) & 0xFF  
-    key1, key2 = get_key(waitKeyP)
-    print("key:", key1)
-
+    key1 = get_key(waitKeyP)
+    print(f"key: {key1}")
+    #print(f"keys: {key1}, {key2}")
+    '''
     if key1 in (0, 224): # windows is trash
         if key2 == 72: key1 = 82
             #print("↑ Up")
@@ -759,6 +776,7 @@ while frame_Index < end_frame:
             #print("← Left")
         elif key2 == 77: key1 = 83
             #print("→ Right")
+    '''
 
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
@@ -768,7 +786,7 @@ while frame_Index < end_frame:
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81: #Left Arrow:  # Back one Frame
+    elif key1 == 'left': #Left Arrow:  # Back one Frame
     #elif key1 == ord('d'):  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
         #save_index = save_index - 1
@@ -786,7 +804,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83:  #Right Arrrow Step forwared One Frame
+    elif key1 == 'right':  #Right Arrrow Step forwared One Frame
     #elif key1 == ord('g'):  # Step forwared One Frame
         print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
@@ -804,7 +822,7 @@ while frame_Index < end_frame:
             print("Reached the end of video")
             #save_index = save_index + 1
             continue                   
-    elif key1 == ord('q'):
+    elif key1 == 'q': #ord('q'):
         print("Quitting.")
         exit()
 
