@@ -181,6 +181,9 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 # === Functions
 def get_key(delay):  # windows is trash
     key = cv2.waitKey(delay)
+    if key == -1:
+        return (key, None)  # No key pressed
+
     if key == 0 or key == 224:
         key2 = cv2.waitKey(0)
         return (key, key2)
@@ -743,7 +746,7 @@ while frame_Index < end_frame:
         resizedframe = track_frames[i]["frame"] 
     
     cv2.imshow("Frame: ", resizedframe)
-    key1 = cv2.waitKey(waitKeyP) & 0xFF  
+    #key1 = cv2.waitKey(waitKeyP) & 0xFF  
     key1, key2 = get_key(waitKeyP)
     print("key:", key1)
 
