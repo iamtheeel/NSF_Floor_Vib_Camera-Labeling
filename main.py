@@ -729,7 +729,8 @@ while frame_Index < end_frame:
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
                         vibImage_rgba = None
-                        resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
+                        if vibImage_rgba is not None:
+                            resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
 
 
                 track_frames[i]["toeVel"] = toeVel_mps
@@ -764,19 +765,7 @@ while frame_Index < end_frame:
     cv2.imshow("Frame: ", resizedframe)
     key1 = cv2.waitKey(waitKeyP) #& 0xFF  
     #key1 = get_key(waitKeyP)
-    print(f"key: {key1}")
-    #print(f"keys: {key1}, {key2}")
-    '''
-    if key1 in (0, 224): # windows is trash
-        if key2 == 72: key1 = 82
-            #print("↑ Up")
-        elif key2 == 80: key1 = 84
-            #print("↓ Down")
-        elif key2 == 75: key1 = 81
-            #print("← Left")
-        elif key2 == 77: key1 = 83
-            #print("→ Right")
-    '''
+    #print(f"key: {key1}")
 
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
