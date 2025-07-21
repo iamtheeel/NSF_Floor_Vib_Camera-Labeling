@@ -5,8 +5,10 @@
 # Label Vibration Data with walking pace from camera
 ####
 
-#modelDir = r"C:\Users\smitt\STARS\\" #Kara
-modelDir = "../media-pipeModels/"   #Josh
+modelDir = r"C:\Users\smitt\STARS\\" #Kara
+#modelDir = "../media-pipeModels/"   #Josh
+
+vidDir = r"E:\STARS" #Kara
 
 ##
 # Pause = Space, 
@@ -50,64 +52,56 @@ Playback = True
 
 #North_South Runs
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
-#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+dir = r"StudentData\25_06_18\subject_1"
+file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
-dir = r"StudentData/25_06_18/subject_2"
-file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+#dir = r"StudentData\25_06_18\subject_2"
+#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #Bad Run:
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
 
 #South_North Runs
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
 #Bad Run:
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
 #file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
 #file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
+
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
-fileName = f"{dir}/{file}"
+fileName = f"{vidDir}/{dir}/{file}"
 print(f"Opening video: {fileName}")
 
 # ===== Global variables
@@ -632,11 +626,11 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 # === Main code === #
 
 # === Set time to start/end
-start_time = 10
+start_time = 5
 
 start_frame = int(start_time * fps) # Start frame for the clip
-end_time = 30 # End time for the clip in seconds
-end_frame = int(end_time * fps) # End frame for the clip
+#end_time = 30 # End time for the clip in seconds
+end_frame = int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -651,7 +645,10 @@ direction  = "North" #Default direction
 track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
                                   "LeftToe_Dist","RightToe_Dist", "RightHeel_Dist", "LeftHeel_Dist", 
                                   "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
-
+prevPixR_Toe = None
+prevPixL_Toe = None
+prevPixR_Heel = None
+prevPixL_Heel = None
 windowLen_s = 1 #5
 windowInc_s = 0.5 #1
 
@@ -700,12 +697,15 @@ while frame_Index < end_frame:
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
-                #drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
-                constPixLH, prevPixLH = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixRH)
-                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],constPixLH) # Blue = left toe
-                #drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
-                constPixRH, prevPixRH = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixLH)
-                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],constPixRH) # Red = right toe 
+                #=== Draws landmarks and expands them according to pixel size
+                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixL_Toe)
+                drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
+                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],3, frame_Index, start_frame, end_frame, prevPixL_Heel)
+                drawLandmark_circle(raw_frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
+                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                drawLandmark_circle(raw_frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
+                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                drawLandmark_circle(raw_frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
