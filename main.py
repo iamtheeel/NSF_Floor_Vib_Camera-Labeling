@@ -125,12 +125,14 @@ dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 
 #vibration properties
+'''
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
     trial = [0],
     window=5
 )
+'''
 
 
 """
@@ -677,7 +679,7 @@ while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
-        print(f"frame_Index: {frame_Index}, i: {i}")
+        #print(f"frame_Index: {frame_Index}, i: {i}")
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
@@ -725,7 +727,7 @@ while frame_Index < end_frame:
                                                 # Also, skip the times that don't have rollovers
                     if i % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
-                        print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
+                        #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
                         heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
