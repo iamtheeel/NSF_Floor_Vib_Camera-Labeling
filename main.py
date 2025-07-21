@@ -721,12 +721,12 @@ while frame_Index < end_frame:
                 track_frames[i]["seconds_sinceMid"] = total_seconds
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if i >= windowLen_s*fps + 1:    # don't run if we don't have a windows worth of data
+                if i >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
                                                 # Also, skip the times that don't have rollovers
                     if i % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
                         print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=True)
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
