@@ -771,10 +771,10 @@ while frame_Index < end_frame:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
             # ===resize for viewing and save in array
             resizedframe = cv2.resize(raw_frame, displayRez)
-            track_frames[i]["frame"] = resizedframe
+            track_frames[i]["frame"] = newDim_Frame
             put_text(text, track_frames, i)
     else:
-        resizedframe = track_frames[i]["frame"] 
+        resizedframe = cv2.resize(track_frames[i]["frame"], displayRez)
     
     cv2.imshow("Frame: ", resizedframe)
 
