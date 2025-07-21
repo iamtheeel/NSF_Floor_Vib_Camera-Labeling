@@ -30,10 +30,12 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
 import os
-from vibDataChunker import vibDataWindow
+#from vibDataChunker import vibDataWindow
 #import keyboard
 
 # Our stuff
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from velocity import calculate_avg_landMark_velocity 
 from cv2Utils import overlay_image
 
@@ -50,8 +52,8 @@ Playback = True
 model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 
 # === VIDEO FILE ===
-video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
-video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
+#video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
+#video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
 fileName = f"{video_dir}/{video_file}"
 
 # === Output Directory ===
@@ -114,7 +116,7 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 #model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
-model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+#zmodel_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -680,7 +682,7 @@ while frame_Index < end_frame:
                     if i % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
                         #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=True)
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
