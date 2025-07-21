@@ -161,7 +161,7 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
-#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
+#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
 model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
@@ -798,7 +798,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             frame_Index = start_frame
     elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
-        print(f"Forward one frame")
+        #print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
         if (frame_Index - start_frame) >= len(track_frames):
@@ -806,7 +806,7 @@ while frame_Index < end_frame:
             frame_Index -= 1 
             #continue             
     elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
-        print(f"forward one second: {fps} frames")
+        #print(f"forward one second: {fps} frames")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
         #if i >= len(track_frames):
