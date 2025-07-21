@@ -6,6 +6,11 @@ def calculate_avg_landMark_velocity(landmark_data, left, right, curentFrame, nPo
     left_np = np.array([entry[left] for entry in landmark_data[curentFrame-nPoints:curentFrame]])
     right_np = np.array([entry[right] for entry in landmark_data[curentFrame-nPoints:curentFrame]])
 
+    if verbose:
+        print(f"seconds: {seconds_np}")
+        print(f"{left}: {left_np}")
+        print(f"{right}: {right_np}")
+        #print(f"shapes seconds: {seconds_np.shape}, left_np: {left_np.shape}, right: {right_np.shape}")
 
     # lstsq needs multi dim for times. We have 2 outputs m, b, so we need 2 inputs: linear algibra
     A = np.vstack([seconds_np, np.ones_like(seconds_np)]).T  # Shape becomes (30, 2) 

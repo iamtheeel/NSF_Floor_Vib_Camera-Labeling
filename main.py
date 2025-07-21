@@ -158,8 +158,9 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
-model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
-#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+
+#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
+model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -648,8 +649,8 @@ track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
                                   "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
 prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
 
-windowLen_s = 5
-windowInc_s = 1
+windowLen_s = 1 #5
+windowInc_s = 0.5 #1
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -674,9 +675,9 @@ waitKeyP = 1
 toeVel_mps = 0
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
-    print(f"frame_Index: {frame_Index}, i: {i}")
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
+        print(f"frame_Index: {frame_Index}, i: {i}")
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
@@ -720,11 +721,13 @@ while frame_Index < end_frame:
                 track_frames[i]["seconds_sinceMid"] = total_seconds
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if i >= windowLen_s*fps: # don't run if we don't have a windows worth of data
+                if i >= windowLen_s*fps + 1:    # don't run if we don't have a windows worth of data
+                                                # Also, skip the times that don't have rollovers
                     if i % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps)
-                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
+                        print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=True)
+                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
                         # send time  seconds since midnight and location of walker
@@ -761,7 +764,6 @@ while frame_Index < end_frame:
             track_frames[i]["frame"] = resizedframe
             put_text(text, track_frames, i)
     else:
-        print(f"get frame from i: {i}")
         resizedframe = track_frames[i]["frame"] 
     
     cv2.imshow("Frame: ", resizedframe)
@@ -776,6 +778,7 @@ while frame_Index < end_frame:
             waitKeyP = 0
             print("Pausing") 
         else:
+            frame_Index -= 1 # when we unpause we will increment, but that will skip on
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
@@ -786,7 +789,7 @@ while frame_Index < end_frame:
             print("Cannot go further back, press space to continue")
             frame_Index = start_frame
     elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
-        print(f"back one second: {fps} frames")
+        #print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
@@ -797,7 +800,7 @@ while frame_Index < end_frame:
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
         if (frame_Index - start_frame) >= len(track_frames):
-            print("Reached the end of video")
+            #print("Reached the end of video")
             frame_Index -= 1 
             #continue             
     elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
