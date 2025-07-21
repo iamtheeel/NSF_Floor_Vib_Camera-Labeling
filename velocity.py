@@ -21,7 +21,7 @@ def calculate_avg_landMark_velocity(landmark_data, left, right, curentFrame, nPo
     m = (m_l +m_r)/2 # Average speeds of left and right
     #TODO: Do we need the R^2?
 
-    if verbose:
+    if verbose: 
         print(f"✅ velocity left{m_l:.3f}, right: {m_r:.3f}, ave: {m:.3f}")
 
     return m
