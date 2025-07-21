@@ -19,13 +19,13 @@
 
 #Third party
 import cv2 # opencv-python
-import pytesseract # pytesseract
+import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
 #import csv
 
 # Media Pipe
-import mediapipe as mp
+import mediapipe as mp  # pip install mediapipe
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
@@ -53,7 +53,12 @@ model_path = "/Users/yokolu/Desktop/mediapipe_models/pose_landmarker_heavy.task"
 video_dir = '/Volumes/MY PASSPORT/SFSU_STARS/25_06_18/Subject_1'
 video_file = 'Sub_1_Run_1_6-18-2025_11-45-46 AM.asf'
 fileName = f"{video_dir}/{video_file}"
-print(f"Opening video: {fileName}")
+
+# === Output Directory ===
+csv_path = "/Users/yokolu/NSF_Floor_Vib_Camera-Labeling/time_aligned_distances.csv"
+output_dir = "/Users/yokolu/NSF_Floor_Vib_Camera-Labeling"
+os.makedirs(output_dir, exist_ok=True)
+print(f"📁 Output directory: {output_dir}")
 
 # ===== Global variables
 
@@ -72,12 +77,14 @@ dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 
 #vibration properties
+'''
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
     trial = [0],
     window=5
 )
+'''
 
 
 """
@@ -105,8 +112,9 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
-model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
-#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+
+#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
+model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -126,6 +134,32 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 # === Functions
+def get_key(delay=0):
+    key1 = cv2.waitKey(delay)
+
+    if key1 == 255:
+        return None  # No key was pressed (in non-blocking mode)
+
+    # Windows special key handling
+    if key1 in [0, 224]:
+        key2 = cv2.waitKey(0) & 0xFF
+        return {
+            72: 'up',
+            80: 'down',
+            75: 'left',
+            77: 'right'
+        }.get(key2, None)
+
+    # Unix-style arrow keys and normal keys
+    return {
+        27: 'esc',
+        ord('q'): 'q',
+        81: 'left',   # ← on Unix
+        82: 'up',     # ↑
+        83: 'right',  # →
+        84: 'down'    # ↓
+    }.get(key1, chr(key1) if 32 <= key1 <= 126 else None)
+
 # === OCR timestamp function ===
 def getDateTime(frame):
     dateTime_img = frame[0:46, 0:384, :]
@@ -569,8 +603,8 @@ track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
                                   "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
 prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
 
-windowLen_s = 5
-windowInc_s = 1
+windowLen_s = 1 #5
+windowInc_s = 0.5 #1
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -597,6 +631,7 @@ while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
+        #print(f"frame_Index: {frame_Index}, i: {i}")
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
@@ -640,17 +675,20 @@ while frame_Index < end_frame:
                 track_frames[i]["seconds_sinceMid"] = total_seconds
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if i >= windowLen_s*fps: # don't run if we don't have a windows worth of data
+                if i >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
+                                                # Also, skip the times that don't have rollovers
                     if i % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps)
-                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
+                        #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
+                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
                         vibImage_rgba = None
-                        resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
+                        if vibImage_rgba is not None:
+                            resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
 
 
                 track_frames[i]["toeVel"] = toeVel_mps
@@ -683,56 +721,57 @@ while frame_Index < end_frame:
         resizedframe = track_frames[i]["frame"] 
     
     cv2.imshow("Frame: ", resizedframe)
-    key1 = cv2.waitKey(waitKeyP) & 0xFF  
-    
+
+    # Navigation
+    key1 = cv2.waitKey(waitKeyP) #& 0xFF  
+    #key1 = get_key(waitKeyP)
+    #print(f"key: {key1}")
+
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
             waitKeyP = 0
             print("Pausing") 
         else:
+            frame_Index -= 1 # when we unpause we will increment, but that will skip on
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81 or key1 == 75: #Left Arrow:  # Back one Frame
-    #elif key1 == ord('d'):  # Back one Frame
+    elif key1 == 81 or key1 ==2 or key1 == ord('d'): #Left Arrow:  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
-        #save_index = save_index - 1
         frame_Index -= 1
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 84:  # Down Arrow Back one Second
-    #elif key1 == ord('s'):  # Back one Second
+    elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
+        #print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83 or key1 == 77:  #Right Arrrow Step forwared One Frame
-    #elif key1 == ord('g'):  # Step forwared One Frame
-        print(f"Forward one frame")
+    elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
+        #print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
-        if i >= len(track_frames):
-            print("Reached the end of video")
-            #save_index = save_index + 1
-            continue             
-    elif key1 == 82:  #Up Arrow Forward one second
-    #elif key1 == ord('h'):  # Forward one second
+        if (frame_Index - start_frame) >= len(track_frames):
+            #print("Reached the end of video")
+            frame_Index -= 1 
+            #continue             
+    elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
+        #print(f"forward one second: {fps} frames")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
-        if i >= len(track_frames):
-            print("Reached the end of video")
-            #save_index = save_index + 1
-            continue                   
+        #if i >= len(track_frames):
+        if track_frames[frame_Index - start_frame]['frame'] is None:
+            frame_Index -= fps
+            print("Reached the end of buffered video")
+            #continue                   
     elif key1 == ord('q'):
         print("Quitting.")
         exit()
 
-    if waitKeyP != 0:
-        frame_Index = frame_Index + 1
+    # If we are not paulsed go to the next frame
+    if waitKeyP != 0: frame_Index = frame_Index + 1 
         
 """                        
 #            with open(csv_path, mode='a', newline='') as file:
