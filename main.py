@@ -5,6 +5,8 @@
 # Label Vibration Data with walking pace from camera
 ####
 
+#modelDir = r"C:\Users\smitt\STARS\\" #Kara
+modelDir = "../media-pipeModels/"   #Josh
 
 ##
 # Pause = Space, 
@@ -56,8 +58,8 @@ Playback = True
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #Jack's video file
-dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
-#dir = r"StudentData/25_06_18/subject_2"
+#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+dir = r"StudentData/25_06_18/subject_2"
 file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #Bad Run:
 #dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
@@ -159,10 +161,10 @@ maintain_width_min = 0
 #Pose landmarker: 256 x 256 x 3 
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
-model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
+#model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 #model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
-#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+model_path = f"{modelDir}pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
