@@ -5,10 +5,11 @@
 # Label Vibration Data with walking pace from camera
 ####
 
-modelDir = r"C:\Users\smitt\STARS\\" #Kara
-#modelDir = "../media-pipeModels/"   #Josh
+#modelDir = r"C:\Users\smitt\STARS\\" #Kara
+#vidDir = r"E:\STARS" #Kara
 
-vidDir = r"E:\STARS" #Kara
+vidDir = "." #Kara
+modelDir = "../media-pipeModels/"   #Josh
 
 ##
 # Pause = Space, 
@@ -52,7 +53,7 @@ Playback = True
 
 #North_South Runs
 #Kara's video file
-dir = r"StudentData\25_06_18\subject_1"
+dir = r"StudentData/25_06_18/subject_1"
 file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Yoko's video file
 #dir = r"StudentData\25_06_18\subject_3"
@@ -121,14 +122,15 @@ dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 
 #vibration properties
-'''
+"""
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
     trial = [0],
     window=5
 )
-'''
+"""
+
 
 
 """
@@ -455,7 +457,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
             min_height = 0
         #Ensures the crop of the person is within bounds and square at the northmost part of the hallway
         elif max_height > height:
-            print("Resetting South Hallway")
+            #print("Resetting South Hallway")
             max_height = maintain_dim[1]
             min_height = maintain_dim[0]
             max_width = maintain_dim[3]
@@ -603,16 +605,17 @@ def put_text(text_array, frame_array, frame_arrayIndex):
 
 def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
-    #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
     total_frames = end_F - start_F 
+    #TODO: call function in distance_position.py
     cm_per_px = (7916.1069 / (y_pix_height + 86.1396)**2) * 100
     raw_px = size_cm / cm_per_px
+
     # Normalize frame progress between 0 and 1
     progress = (frame_I - start_F) / total_frames
     progress = max(0, min(progress, 1))  # Ensures frame_index is within range
     # Define a target multiplier as a function of frame progress
     # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
-    target_multiplier = 1 + 6 * progress
+    target_multiplier = 1 + 20 * progress
     target_px = raw_px * target_multiplier
 
     # If this is the first frame, no previous px to smooth from
@@ -649,8 +652,8 @@ prevPixR_Toe = None
 prevPixL_Toe = None
 prevPixR_Heel = None
 prevPixL_Heel = None
-windowLen_s = 1 #5
-windowInc_s = 0.5 #1
+windowLen_s = 2#5
+windowInc_s = 0.5#1
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -698,13 +701,15 @@ while frame_Index < end_frame:
                 landmarks = result.pose_landmarks[0]
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
                 #=== Draws landmarks and expands them according to pixel size
-                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixL_Toe)
+                landmarkSize_cm = 6
+                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],landmarkSize_cm, frame_Index, start_frame, end_frame, prevPixL_Toe)
+                #print(f"constPxL_Toe: {constPixL_Toe}")
                 drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
-                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],3, frame_Index, start_frame, end_frame, prevPixL_Heel)
+                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],landmarkSize_cm, frame_Index, start_frame, end_frame, prevPixL_Heel)
                 drawLandmark_circle(raw_frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
-                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],landmarkSize_cm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
-                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],landmarkSize_cm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
@@ -749,17 +754,17 @@ while frame_Index < end_frame:
                     f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
                     f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
                     f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
+                    f"Since Midnight: {track_frames[i]["seconds_sinceMid"]:.3f} s"
                     ]
                 framewith_data +=1
 
                 # TODO: Add vibration data to frame
             else: # not good or no result
-                text = [
-                    f"Left Toe: 000", 
-                    f"Right Toe: 000",
-                    f"Seconds: 000"
-                    ]
+                text = []
+                    #f"Left Toe: 000", 
+                    #f"Right Toe: 000",
+                    #f"Seconds: 000"
+                    #]
                 if frame_Index % 2 ==0:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
