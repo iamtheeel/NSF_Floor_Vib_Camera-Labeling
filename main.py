@@ -159,10 +159,10 @@ maintain_width_min = 0
 #Pose landmarker: 256 x 256 x 3 
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
+model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 #model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
-model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -675,6 +675,7 @@ videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 # === Begin process of cropping, saving, and playback
 waitKeyP = 1
 toeVel_mps = 0
+framewith_data = 0
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
@@ -723,9 +724,9 @@ while frame_Index < end_frame:
                 track_frames[i]["seconds_sinceMid"] = total_seconds
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if i >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
+                if framewith_data >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
                                                 # Also, skip the times that don't have rollovers
-                    if i % (windowInc_s*fps) == 0: # run every overlap
+                    if framewith_data % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
                         #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
                         heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
@@ -749,7 +750,8 @@ while frame_Index < end_frame:
                     f"Heel Vel: {track_frames[i]["heelVel"]:.2f}",
                     f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
                     ]
-                
+                framewith_data +=1
+
                 # TODO: Add vibration data to frame
             else: # not good or no result
                 text = [
