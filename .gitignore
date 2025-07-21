@@ -8,5 +8,4 @@ StudentData/*/*/*/*/*.jpg
 *.asf
 *.hdf5
 *.mp4
-__pycache__
 *.pyc
