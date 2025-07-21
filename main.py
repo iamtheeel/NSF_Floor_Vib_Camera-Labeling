@@ -651,7 +651,6 @@ direction  = "North" #Default direction
 track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
                                   "LeftToe_Dist","RightToe_Dist", "RightHeel_Dist", "LeftHeel_Dist", 
                                   "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
-prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
 
 windowLen_s = 1 #5
 windowInc_s = 0.5 #1
@@ -702,11 +701,11 @@ while frame_Index < end_frame:
                 landmarks = result.pose_landmarks[0]
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
                 #drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
-                constPixL, prevPix[0] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[0])
-                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],constPixL) # Blue = left toe
+                constPixLH, prevPixLH = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixRH)
+                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],constPixLH) # Blue = left toe
                 #drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
-                constPixR, prevPix[1] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[1])
-                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],constPixR) # Red = right toe 
+                constPixRH, prevPixRH = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixLH)
+                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],constPixRH) # Red = right toe 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
@@ -746,11 +745,11 @@ while frame_Index < end_frame:
                 track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
-                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
-                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
-                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f}",
-                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f}",
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
+                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
+                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
+                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
+                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
                     ]
                 framewith_data +=1
 
