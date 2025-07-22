@@ -17,12 +17,12 @@ from scipy.signal import decimate
 
 
 class vibDataWindow:
-    def __init__(self, dir_path, data_file, trial, old_data=False, window=5):
+    def __init__(self, dir_path, data_file, trial_to_plot=[0], ch_to_plot=[1], old_data=False, window=5):
         self.dir = dir_path
         self.dataFile = data_file
         self.dirFile = f"{self.dir}/{self.dataFile}"
-        self.trial = trial
-        self.chToPlot = [1]
+        self.trialToPlot = trial_to_plot
+        self.chToPlot = ch_to_plot
         self.oldData = old_data
         self.window = window
         self.dataTimeRange_s = [0, 0]
@@ -126,12 +126,16 @@ class vibDataWindow:
         plt.show()
 
     #external call
+<<<<<<< HEAD
     def vib_get(self, time, distanceFromCam, hhmmss=False, debug=False):
+=======
+    def vib_get(self, timeChunk, trialList, hhmmss=False, debug=False):
+>>>>>>> d6748dc4ac882d598f3d5c0d0ddd8a6d64e57f22
         fs_hz, recordLen_s, preTrigger_s, nTrials = self.load_parameters()
         if debug:
             print(f"Data cap rate: {fs_hz} Hz, Record Length: {recordLen_s}s, Pre-trigger: {preTrigger_s}s, Trials: {nTrials}")
 
-        for chunk in time:
+        for chunk in timeChunk:
             if debug:
                 print(f"Trial {chunk['trial']} at {chunk['time']}")
             dataBlock_numpy, triggerTime = self.load_data(trial=chunk['trial'])

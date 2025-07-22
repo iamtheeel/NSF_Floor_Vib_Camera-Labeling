@@ -5,6 +5,10 @@
 # Label Vibration Data with walking pace from camera
 ####
 
+modelDir = r"C:\Users\smitt\STARS\\" #Kara
+#modelDir = "../media-pipeModels/"   #Josh
+
+vidDir = r"E:\STARS" #Kara
 
 ##
 # Pause = Space, 
@@ -19,13 +23,13 @@
 
 #Third party
 import cv2 # opencv-python
-import pytesseract # pytesseract
+import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
 #import csv
 
 # Media Pipe
-import mediapipe as mp
+import mediapipe as mp  # pip install mediapipe
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
@@ -48,64 +52,56 @@ Playback = True
 
 #North_South Runs
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
-#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+dir = r"StudentData\25_06_18\subject_1"
+file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
-dir = r"StudentData/25_06_18/subject_2"
-file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
+#dir = r"StudentData\25_06_18\subject_2"
+#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #Bad Run:
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
 
 #South_North Runs
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
 #Bad Run:
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
 
 #Kara's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
+#dir = r"StudentData\25_06_18\subject_1"
 #file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
 #file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\Subject_1-selected"
 #file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+
 #Jack's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
+#dir = r"StudentData\25_06_18\subject_2"
 #file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_2-selected"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
+
 #Yoko's video file
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
+#dir = r"StudentData\25_06_18\subject_3"
 #file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-#dir = r"E:\STARS\06_18_2025_Vid_Data\subject_3-selected"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
-fileName = f"{dir}/{file}"
+fileName = f"{vidDir}/{dir}/{file}"
 print(f"Opening video: {fileName}")
 
 # ===== Global variables
@@ -123,14 +119,17 @@ frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
+displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
 #vibration properties
+'''
 vib = vibDataWindow(
     dir_path=r'STARS\StudentData\25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
     trial = [0],
     window=5
 )
+'''
 
 
 """
@@ -158,8 +157,9 @@ maintain_width_min = 0
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
 #model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
-model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 29.2 MiB
-#model_path = r"../media-pipeModels/pose_landmarker_heavy.task" # 29.2 MiB
+
+#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
+model_path = f"{modelDir}pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -179,6 +179,32 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 # === Functions
+def get_key(delay=0):
+    key1 = cv2.waitKey(delay)
+
+    if key1 == 255:
+        return None  # No key was pressed (in non-blocking mode)
+
+    # Windows special key handling
+    if key1 in [0, 224]:
+        key2 = cv2.waitKey(0) & 0xFF
+        return {
+            72: 'up',
+            80: 'down',
+            75: 'left',
+            77: 'right'
+        }.get(key2, None)
+
+    # Unix-style arrow keys and normal keys
+    return {
+        27: 'esc',
+        ord('q'): 'q',
+        81: 'left',   # ← on Unix
+        82: 'up',     # ↑
+        83: 'right',  # →
+        84: 'down'    # ↓
+    }.get(key1, chr(key1) if 32 <= key1 <= 126 else None)
+
 # === OCR timestamp function ===
 def getDateTime(frame):
     dateTime_img = frame[0:46, 0:384, :]
@@ -544,7 +570,7 @@ def create_Trackframes(firstframe, lastframe, *definitions):
     track_frames = [default_dict.copy() for _ in range(lastframe - firstframe)] # Initialize the list with the number of frames
     return track_frames
 
-def put_text(text_array, frame_array, frame_arrayIndex):
+def put_text(text_array, frame):
     """
     Adds text from a dictionary to a frame with the same index 
     
@@ -566,17 +592,18 @@ def put_text(text_array, frame_array, frame_arrayIndex):
         words = text_array[text_arrayIndex] #Save string at index to words
         (text_width, text_height), baseline = cv2.getTextSize(words, font, scale, thickness) #
         cv2.rectangle(
-        frame_array[frame_arrayIndex]["frame"],
+        frame,
         (x - 2, y - text_height - 2),                # Top-left corner
         (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
         (255, 255, 255),                             # White background
         thickness=cv2.FILLED                         # Filled rectangle
     )
-        cv2.putText(track_frames[frame_arrayIndex]["frame"], text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
+        cv2.putText(frame, text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
         text_arrayIndex = text_arrayIndex+1
         y = y + (text_height +20)
 
-def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
+
+def grow_constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
     #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
     total_frames = end_F - start_F 
@@ -598,14 +625,32 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 
     return int(smoothed_px), smoothed_px
 
+def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
+    y_pix_height = landmarks.y* height
+    #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
+    total_frames = end_F - start_F 
+    cm_per_px = (7916.1069 / (y_pix_height + 86.1396)**2) * 100
+    raw_px = size_cm / cm_per_px
+    # Normalize frame progress between 0 and 1
+    progress = (frame_I - start_F) / total_frames
+    progress = max(0, min(progress, 1))  # Ensures frame_index is within range
+
+    # If this is the first frame, no previous px to smooth from
+    if prev_px is None:
+        smoothed_px = raw_px
+    else:
+        smoothed_px = alpha * raw_px + (1 - alpha) * prev_px
+
+    return int(smoothed_px), smoothed_px
+
 # === Main code === #
 
 # === Set time to start/end
-start_time = 10
+start_time = 5
 
 start_frame = int(start_time * fps) # Start frame for the clip
-end_time = 30 # End time for the clip in seconds
-end_frame = int(end_time * fps) # End frame for the clip
+#end_time = 30 # End time for the clip in seconds
+end_frame = int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -617,13 +662,21 @@ smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [sm
 time_tracker = timeWith_ms(frameTime_ms) #Creates object
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "North" #Default direction 
-track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
+track_frames = create_Trackframes(start_frame, end_frame, "frame", "cropped_frame", "landmarks",
                                   "LeftToe_Dist","RightToe_Dist", "RightHeel_Dist", "LeftHeel_Dist", 
-                                  "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
-prevPix = [None, None, None, None] #[leftHeel, rightHeel, leftToe, rightToe]
-
-windowLen_s = 5
-windowInc_s = 1
+                                 "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
+crop_prevPixR_Toe = None
+crop_prevPixL_Toe = None
+crop_prevPixR_Heel = None
+crop_prevPixL_Heel = None                                 
+prevPixR_Toe = None
+prevPixL_Toe = None
+prevPixR_Heel = None
+prevPixL_Heel = None
+windowLen_s = 1 #5
+windowInc_s = 0.5 #1
+pixel_incm = 6
+cropped_pixel_incm = 3
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -646,10 +699,12 @@ videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 # === Begin process of cropping, saving, and playback
 waitKeyP = 1
 toeVel_mps = 0
+framewith_data = 0
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
+        #print(f"frame_Index: {frame_Index}, i: {i}")
         success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
@@ -667,13 +722,26 @@ while frame_Index < end_frame:
         # === 
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
+                constPixL_Toe, crop_prevPixL_Toe = constantSize(landmarks[31],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Toe)
+                drawLandmark_circle(newDim_Frame, landmarks[31], [230, 216, 173], constPixL_Toe) #left toe is light blue
+                constPixL_Heel, crop_prevPixL_Heel = constantSize(landmarks[29],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
+                constPixR_Heel, crop_prevPixR_Heel = constantSize(landmarks[32],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
+                constPixR_Toe, crop_prevPixR_Toe = constantSize(landmarks[30],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[30], [0, 0, 139],constPixR_Toe) #right heel is dark red
+
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
-                #drawLandmark_square(raw_frame,landmarks[29],[255,0,0])
-                constPixL, prevPix[0] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[0])
-                drawLandmark_circle(raw_frame, landmarks[31], [255,0,0],constPixL) # Blue = left toe
-                #drawLandmark_square(raw_frame,landmarks[30],[0,0,255])
-                constPixR, prevPix[1] = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPix[1])
-                drawLandmark_circle(raw_frame, landmarks[32], [0,0,255],constPixR) # Red = right toe 
+                #=== Draws landmarks and expands them according to pixel size
+                
+                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Toe)
+                drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
+                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Heel)
+                drawLandmark_circle(raw_frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
+                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                drawLandmark_circle(raw_frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
+                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                drawLandmark_circle(raw_frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
@@ -693,102 +761,106 @@ while frame_Index < end_frame:
                 track_frames[i]["seconds_sinceMid"] = total_seconds
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if i >= windowLen_s*fps: # don't run if we don't have a windows worth of data
-                    if i % (windowInc_s*fps) == 0: # run every overlap
+                if framewith_data >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
+                                                # Also, skip the times that don't have rollovers
+                    if framewith_data % (windowInc_s*fps) == 0: # run every overlap
                         #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps)
-                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps)
+                        #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
+                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
                         vibImage_rgba = None
-                        resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
+                        if vibImage_rgba is not None:
+                            resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
 
 
                 track_frames[i]["toeVel"] = toeVel_mps
                 track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
-                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f}", 
-                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f}",
-                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f}",
-                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f}",
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f}"
+                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
+                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
+                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
+                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
                     ]
-                
+                framewith_data +=1
+
                 # TODO: Add vibration data to frame
             else: # not good or no result
                 text = [
-                    f"Left Toe: 000", 
-                    f"Right Toe: 000",
-                    f"Seconds: 000"
                     ]
                 if frame_Index % 2 ==0:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
             # ===resize for viewing and save in array
-            resizedframe = cv2.resize(raw_frame, displayRez)
-            track_frames[i]["frame"] = resizedframe
-            put_text(text, track_frames, i)
+            resized_rawframe = cv2.resize(raw_frame, displayRez)
+            resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
+            track_frames[i]["frame"] = resized_rawframe
+            track_frames[i]["cropped_frame"] = resizedframe
+            put_text(text, track_frames[i]["cropped_frame"])
+            put_text(text, track_frames[i]["frame"])
     else:
-        resizedframe = track_frames[i]["frame"] 
-    
-    cv2.imshow("Frame: ", resizedframe)
-    key1 = cv2.waitKey(waitKeyP) & 0xFF  
-    print("key:", key1)
-    
+        resized_rawframe = track_frames[i]["frame"]
+        resizedframe = track_frames[i]["cropped_frame"]
+
+    cv2.imshow("Resized Frame: ", resizedframe)
+    cv2.imshow("Frame: ", resized_rawframe)
+
+    # Navigation
+    key1 = cv2.waitKey(waitKeyP) #& 0xFF  
+    #key1 = get_key(waitKeyP)
+    #print(f"key: {key1}")
+
     if key1 == 32: #Space to pause
         if waitKeyP == 1:
             waitKeyP = 0
             print("Pausing") 
         else:
+            frame_Index -= 1 # when we unpause we will increment, but that will skip on
             waitKeyP = 1
             print("Resuming") 
             frame_Index = frame_Index + 1
-    elif key1 == 81 or key1 == 75: #Left Arrow:  # Back one Frame
-    #elif key1 == ord('d'):  # Back one Frame
+    elif key1 == 81 or key1 ==2 or key1 == ord('d'): #Left Arrow:  # Back one Frame
         waitKeyP = 0 # If we key we want to pause
-        #save_index = save_index - 1
         frame_Index -= 1
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 84:  # Down Arrow Back one Second
-    #elif key1 == ord('s'):  # Back one Second
-        print(f"back one second: {fps} frames")
+    elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
+        #print(f"back one second: {fps} frames")
         waitKeyP = 0
         frame_Index -= fps
         if frame_Index < start_frame:
             print("Cannot go further back, press space to continue")
-            #save_index = save_index + 1
             frame_Index = start_frame
-    elif key1 == 83 or key1 == 77:  #Right Arrrow Step forwared One Frame
-    #elif key1 == ord('g'):  # Step forwared One Frame
-        print(f"Forward one frame")
+    elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
+        #print(f"Forward one frame")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += 1 
-        if i >= len(track_frames):
-            print("Reached the end of video")
-            #save_index = save_index + 1
-            continue             
-    elif key1 == 82:  #Up Arrow Forward one second
-        print(f"forward one second: {fps} frames")
-    #elif key1 == ord('h'):  # Forward one second
+        if (frame_Index - start_frame) >= len(track_frames):
+            #print("Reached the end of video")
+            frame_Index -= 1 
+            #continue             
+    elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
+        #print(f"forward one second: {fps} frames")
         waitKeyP = 0 # If we key we want to pause
         frame_Index += fps
-        if i >= len(track_frames):
-            print("Reached the end of video")
-            #save_index = save_index + 1
-            continue                   
+        #if i >= len(track_frames):
+        if track_frames[frame_Index - start_frame]['frame'] is None:
+            frame_Index -= fps
+            print("Reached the end of buffered video")
+            #continue                   
     elif key1 == ord('q'):
         print("Quitting.")
         exit()
 
-    if waitKeyP != 0:
-        frame_Index = frame_Index + 1
+    # If we are not paulsed go to the next frame
+    if waitKeyP != 0: frame_Index = frame_Index + 1 
         
 """                        
 #            with open(csv_path, mode='a', newline='') as file:
