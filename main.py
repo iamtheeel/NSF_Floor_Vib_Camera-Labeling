@@ -622,7 +622,7 @@ def grow_constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None,
     progress = max(0, min(progress, 1))  # Ensures frame_index is within range
     # Define a target multiplier as a function of frame progress
     # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
-    target_multiplier = 1 + 6 * progress
+    target_multiplier = 1 + 16 * progress
     target_px = raw_px * target_multiplier
 
     # If this is the first frame, no previous px to smooth from
@@ -800,6 +800,8 @@ while frame_Index < end_frame:
                 text = [
                     f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
                     f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    f"Left Heel: {track_frames[i]["LeftHeel_Dist"]:.2f} m", 
+                    f"Right Heel: {track_frames[i]["RightHeel_Dist"]:.2f} m",
                     f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
                     f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
                     f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
