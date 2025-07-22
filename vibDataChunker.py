@@ -116,9 +116,10 @@ class vibDataWindow:
             dataBlock, chList, [time_offset_sec, time_offset_sec + self.window], dataCapRate, trial=-1
         )
 
-        time_axis = np.linspace(time_offset_sec, time_offset_sec + window_s, sliced_data.shape[1])
+        time_axis = np.linspace(time_offset_sec, time_offset_sec + self.window, sliced_data.shape[1])
 
         plt.figure()
+        plt.ioff()
         for i, ch in enumerate(chList):
             plt.plot(time_axis, sliced_data[i], label=f"Ch {ch}")
         plt.title(f"Trial {trial_num} - Time {target_time_str}")
@@ -135,8 +136,8 @@ class vibDataWindow:
         canv.draw()  # make the memory do the thing
         buf=canv.buffer_rgba() # a buffer of the image
         self.img_rgba = np.asarray(buf)  # Return 
-        ## TO load it: img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_RGBA2BGR)
-        ##             We will work on overlaying it later...
+        plt.close(fig)  # Close the figure to free memory
+
 
         #plt.show()
 
@@ -150,6 +151,7 @@ class vibDataWindow:
         trial_num = self.trialToPlot if isinstance(self.trialToPlot, int) else self.trialToPlot[0]
         dataBlock_numpy, triggerTime = self.load_data(trial=trial_num)
 
+        
         for ch in self.chToPlot:
             if debug:
                 print(f"Plotting Trial {trial_num}, Channel {ch}, Time {time}")
@@ -162,6 +164,7 @@ class vibDataWindow:
                 preTrigger=preTrigger_s,
                 chList=[ch]  # Pass only the current channel
             )
+        
         # TODO: return as an object to be displayed
         # TODO: distance from camera vib calculation
         return self.img_rgba

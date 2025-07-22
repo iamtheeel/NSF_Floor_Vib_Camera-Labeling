@@ -5,10 +5,12 @@
 # Label Vibration Data with walking pace from camera
 ####
 
-modelDir = r"C:\Users\smitt\STARS\\" #Kara
+#modelDir = r"C:\Users\smitt\STARS\\" #Kara
 #modelDir = "../media-pipeModels/"   #Josh
+modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
 
-vidDir = r"E:\STARS" #Kara
+#vidDir = r"E:\STARS" #Kara
+vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
 
 ##
 # Pause = Space, 
@@ -100,6 +102,11 @@ file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
+#pollvintercept Jack runs
+dir = r"StudentData\25_07-10"
+file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
+
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
 fileName = f"{vidDir}/{dir}/{file}"
@@ -124,8 +131,8 @@ displayRezsquare = (int(height/dispFact), int(height/dispFact))
 
 #vibration properties
 vib = vibDataWindow(
-    dir_path='STARS/StudentData/25_07-10',
-    data_file="Jack_clockTest_interuptVPoll.hdf5",
+    dir_path=r'C:\Users\notyo\Documents\STARS\StudentData\25_07-10',
+    data_file=r"Jack_clockTest_interuptVPoll.hdf5",
     trial_to_plot=0,
     ch_to_plot=[1],
     old_data=False,
@@ -447,7 +454,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
         #Since the height is rarely ever equal to the original height, this is a failsafe
         #if statement should be true when the person is nearing the northmost part of the hallway
         if abs(max_height - height) / height <= .01:
-            print("Maintaining South Hallway")
+            #print("Maintaining South Hallway")
             maintain_dim[1] = height
             maintain_dim[0] = min_height
             maintain_dim[3] = max_width
@@ -457,7 +464,7 @@ def crop_to_square(frame, landmarks, direction, maintain_dim):
             min_height = 0
         #Ensures the crop of the person is within bounds and square at the northmost part of the hallway
         elif max_height > height:
-            print("Resetting South Hallway")
+            #print("Resetting South Hallway")
             max_height = maintain_dim[1]
             min_height = maintain_dim[0]
             max_width = maintain_dim[3]
@@ -701,6 +708,11 @@ videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 waitKeyP = 1
 toeVel_mps = 0
 framewith_data = 0
+
+vibImage_rgba = None
+windowName = "Main Frame:"
+cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
+
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
@@ -775,8 +787,11 @@ while frame_Index < end_frame:
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
                         vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50)
-                        if vibImage_rgba is not None:
-                            resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
+                        
+
+
+                if vibImage_rgba is not None:
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba, loc_x=550, loc_y=1000, dim_x=300, dim_y=300) # overlay at this position
 
 
                 track_frames[i]["toeVel"] = toeVel_mps
@@ -801,6 +816,8 @@ while frame_Index < end_frame:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
             # ===resize for viewing and save in array
             resized_rawframe = cv2.resize(raw_frame, displayRez)
+            print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
+
             resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
             track_frames[i]["frame"] = resized_rawframe
             track_frames[i]["cropped_frame"] = resizedframe
@@ -810,8 +827,9 @@ while frame_Index < end_frame:
         resized_rawframe = track_frames[i]["frame"]
         resizedframe = track_frames[i]["cropped_frame"]
 
-    cv2.imshow("Resized Frame: ", resizedframe)
-    cv2.imshow("Frame: ", resized_rawframe)
+    cv2.imshow("Zoomed Frame: ", resizedframe)
+    cv2.imshow(windowName, resized_rawframe)
+    cv2.resizeWindow(windowName, 1433, 756) #TODO: use from vars
 
     # Navigation
     key1 = cv2.waitKey(waitKeyP) #& 0xFF  
