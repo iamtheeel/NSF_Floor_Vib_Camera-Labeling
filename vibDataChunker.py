@@ -90,14 +90,14 @@ class vibDataWindow:
     def time_to_seconds(self, t):
         return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6
 
-    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, preTrigger=0):
+    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, preTrigger=0.0):
         if isinstance(target_time_str, str):
             target_time_obj = datetime.strptime(target_time_str, "%H:%M:%S.%f").time()
         else:
             target_time_obj = target_time_str
 
         trigger_sec = self.time_to_seconds(trigger_time.time()) - preTrigger
-        target_sec = self.time_to_seconds(target_time_obj)
+        target_sec = target_time_obj
         time_offset_sec = target_sec - trigger_sec - self.window
 
         if time_offset_sec < 0:
@@ -126,27 +126,25 @@ class vibDataWindow:
         plt.show()
 
     #external call
-<<<<<<< HEAD
     def vib_get(self, time, distanceFromCam, hhmmss=False, debug=False):
-=======
-    def vib_get(self, timeChunk, trialList, hhmmss=False, debug=False):
->>>>>>> d6748dc4ac882d598f3d5c0d0ddd8a6d64e57f22
         fs_hz, recordLen_s, preTrigger_s, nTrials = self.load_parameters()
         if debug:
             print(f"Data cap rate: {fs_hz} Hz, Record Length: {recordLen_s}s, Pre-trigger: {preTrigger_s}s, Trials: {nTrials}")
 
-        for chunk in timeChunk:
+        for chunk in self.trialToPlot:
             if debug:
                 print(f"Trial {chunk['trial']} at {chunk['time']}")
-            dataBlock_numpy, triggerTime = self.load_data(trial=chunk['trial'])
+            dataBlock_numpy, triggerTime = self.load_data(trial=chunk(self.trialToPlot))
             self.show_data_at_time(
-                target_time_str=chunk['time'],
+                target_time_str=time,
                 dataBlock=dataBlock_numpy,
                 trigger_time=triggerTime,
-                trial_num=chunk(self.trial),
+                trial_num=self.trialToPlot,
                 dataCapRate=fs_hz,
                 preTrigger=preTrigger_s
             )
+            #TODO: return as an object to be displayed
+            #TODO: distance from camera vib calculation
         return
 
 
