@@ -603,7 +603,7 @@ def put_text(text_array, frame):
         y = y + (text_height +20)
 
 
-def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
+def grow_constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
     #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
     total_frames = end_F - start_F 
@@ -614,7 +614,7 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
     progress = max(0, min(progress, 1))  # Ensures frame_index is within range
     # Define a target multiplier as a function of frame progress
     # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
-    target_multiplier = 1 + 16 * progress
+    target_multiplier = 1 + 6 * progress
     target_px = raw_px * target_multiplier
 
     # If this is the first frame, no previous px to smooth from
@@ -622,6 +622,24 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
         smoothed_px = target_px
     else:
         smoothed_px = alpha * target_px + (1 - alpha) * prev_px
+
+    return int(smoothed_px), smoothed_px
+
+def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
+    y_pix_height = landmarks.y* height
+    #distance_from_cam = 7916.1069 / (y_pix_height + 86.1396) - 1.0263
+    total_frames = end_F - start_F 
+    cm_per_px = (7916.1069 / (y_pix_height + 86.1396)**2) * 100
+    raw_px = size_cm / cm_per_px
+    # Normalize frame progress between 0 and 1
+    progress = (frame_I - start_F) / total_frames
+    progress = max(0, min(progress, 1))  # Ensures frame_index is within range
+
+    # If this is the first frame, no previous px to smooth from
+    if prev_px is None:
+        smoothed_px = raw_px
+    else:
+        smoothed_px = alpha * raw_px + (1 - alpha) * prev_px
 
     return int(smoothed_px), smoothed_px
 
@@ -658,6 +676,7 @@ prevPixL_Heel = None
 windowLen_s = 1 #5
 windowInc_s = 0.5 #1
 pixel_incm = 6
+cropped_pixel_incm = 3
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -703,15 +722,15 @@ while frame_Index < end_frame:
         # === 
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
-                constPixL_Toe, crop_prevPixL_Toe = constantSize(landmarks[31],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Toe)
-                drawLandmark_circle(newDim_Frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
-                constPixL_Heel, crop_prevPixL_Heel = constantSize(landmarks[29],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Heel)
+                constPixL_Toe, crop_prevPixL_Toe = constantSize(landmarks[31],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Toe)
+                drawLandmark_circle(newDim_Frame, landmarks[31], [230, 216, 173], constPixL_Toe) #left toe is light blue
+                constPixL_Heel, crop_prevPixL_Heel = constantSize(landmarks[29],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Heel)
                 drawLandmark_circle(newDim_Frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
-                constPixR_Heel, crop_prevPixR_Heel = constantSize(landmarks[32],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                constPixR_Heel, crop_prevPixR_Heel = constantSize(landmarks[32],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
                 drawLandmark_circle(newDim_Frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
-                constPixR_Toe, crop_prevPixR_Toe = constantSize(landmarks[30],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
-                drawLandmark_circle(newDim_Frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red
-                 
+                constPixR_Toe, crop_prevPixR_Toe = constantSize(landmarks[30],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[30], [0, 0, 139],constPixR_Toe) #right heel is dark red
+
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
                 #=== Draws landmarks and expands them according to pixel size
                 
