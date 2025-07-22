@@ -119,6 +119,7 @@ frameTime_ms = 1000/fps #How long of a time does each frame cover
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
+displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
 #vibration properties
 '''
@@ -569,7 +570,7 @@ def create_Trackframes(firstframe, lastframe, *definitions):
     track_frames = [default_dict.copy() for _ in range(lastframe - firstframe)] # Initialize the list with the number of frames
     return track_frames
 
-def put_text(text_array, frame_array, frame_arrayIndex):
+def put_text(text_array, frame):
     """
     Adds text from a dictionary to a frame with the same index 
     
@@ -591,15 +592,16 @@ def put_text(text_array, frame_array, frame_arrayIndex):
         words = text_array[text_arrayIndex] #Save string at index to words
         (text_width, text_height), baseline = cv2.getTextSize(words, font, scale, thickness) #
         cv2.rectangle(
-        frame_array[frame_arrayIndex]["frame"],
+        frame,
         (x - 2, y - text_height - 2),                # Top-left corner
         (x + text_width + 2, y + baseline + 2),      # Bottom-right corner
         (255, 255, 255),                             # White background
         thickness=cv2.FILLED                         # Filled rectangle
     )
-        cv2.putText(track_frames[frame_arrayIndex]["frame"], text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
+        cv2.putText(frame, text_array[text_arrayIndex], (x, y), font, scale, (0,0,0), thickness)
         text_arrayIndex = text_arrayIndex+1
         y = y + (text_height +20)
+
 
 def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
@@ -612,7 +614,7 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
     progress = max(0, min(progress, 1))  # Ensures frame_index is within range
     # Define a target multiplier as a function of frame progress
     # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
-    target_multiplier = 1 + 6 * progress
+    target_multiplier = 1 + 16 * progress
     target_px = raw_px * target_multiplier
 
     # If this is the first frame, no previous px to smooth from
@@ -642,15 +644,20 @@ smoothed_dim = [None, None, None, None]  # Initialize smoothed dimensions -> [sm
 time_tracker = timeWith_ms(frameTime_ms) #Creates object
 alpha = .1  # smoothing factor between 0 (slow) and 1 (no smoothing)
 direction  = "North" #Default direction 
-track_frames = create_Trackframes(start_frame, end_frame, "frame", "landmarks",
+track_frames = create_Trackframes(start_frame, end_frame, "frame", "cropped_frame", "landmarks",
                                   "LeftToe_Dist","RightToe_Dist", "RightHeel_Dist", "LeftHeel_Dist", 
-                                  "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
+                                 "seconds_sinceMid", "toeVel", "heelVel") #array to track information about each frame
+crop_prevPixR_Toe = None
+crop_prevPixL_Toe = None
+crop_prevPixR_Heel = None
+crop_prevPixL_Heel = None                                 
 prevPixR_Toe = None
 prevPixL_Toe = None
 prevPixR_Heel = None
 prevPixL_Heel = None
 windowLen_s = 1 #5
 windowInc_s = 0.5 #1
+pixel_incm = 6
 
 # === Write to file
 #csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
@@ -696,15 +703,25 @@ while frame_Index < end_frame:
         # === 
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
+                constPixL_Toe, crop_prevPixL_Toe = constantSize(landmarks[31],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Toe)
+                drawLandmark_circle(newDim_Frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
+                constPixL_Heel, crop_prevPixL_Heel = constantSize(landmarks[29],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
+                constPixR_Heel, crop_prevPixR_Heel = constantSize(landmarks[32],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
+                constPixR_Toe, crop_prevPixR_Toe = constantSize(landmarks[30],pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
+                drawLandmark_circle(newDim_Frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red
+                 
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
                 #=== Draws landmarks and expands them according to pixel size
-                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],3, frame_Index, start_frame, end_frame, prevPixL_Toe)
+                
+                constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Toe)
                 drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
-                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],3, frame_Index, start_frame, end_frame, prevPixL_Heel)
+                constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Heel)
                 drawLandmark_circle(raw_frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
-                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
-                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],3, frame_Index, start_frame, end_frame, prevPixR_Heel)
+                constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red 
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
@@ -756,22 +773,24 @@ while frame_Index < end_frame:
                 # TODO: Add vibration data to frame
             else: # not good or no result
                 text = [
-                    f"Left Toe: 000", 
-                    f"Right Toe: 000",
-                    f"Seconds: 000"
                     ]
                 if frame_Index % 2 ==0:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
             # ===resize for viewing and save in array
-            resizedframe = cv2.resize(raw_frame, displayRez)
-            track_frames[i]["frame"] = resizedframe
-            put_text(text, track_frames, i)
+            resized_rawframe = cv2.resize(raw_frame, displayRez)
+            resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
+            track_frames[i]["frame"] = resized_rawframe
+            track_frames[i]["cropped_frame"] = resizedframe
+            put_text(text, track_frames[i]["cropped_frame"])
+            put_text(text, track_frames[i]["frame"])
     else:
-        resizedframe = track_frames[i]["frame"] 
-    
-    cv2.imshow("Frame: ", resizedframe)
+        resized_rawframe = track_frames[i]["frame"]
+        resizedframe = track_frames[i]["cropped_frame"]
+
+    cv2.imshow("Resized Frame: ", resizedframe)
+    cv2.imshow("Frame: ", resized_rawframe)
 
     # Navigation
     key1 = cv2.waitKey(waitKeyP) #& 0xFF  
