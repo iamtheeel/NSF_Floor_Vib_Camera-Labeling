@@ -40,6 +40,7 @@ from vibDataChunker import vibDataWindow
 # Our stuff
 from velocity import calculate_avg_landMark_velocity 
 from cv2Utils import overlay_image
+from vibDataChunker import vibDataWindow
 
 # === Fix import path to reach distance_position.py ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -122,14 +123,14 @@ displayRez = (int(width/dispFact), int(height/dispFact))
 displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
 #vibration properties
-'''
 vib = vibDataWindow(
-    dir_path=r'STARS\StudentData\25_07-10',
+    dir_path='STARS/StudentData/25_07-10',
     data_file="Jack_clockTest_interuptVPoll.hdf5",
-    trial = [0],
+    trial_to_plot=0,
+    ch_to_plot=[1],
+    old_data=False,
     window=5
 )
-'''
 
 
 """
@@ -770,9 +771,10 @@ while frame_Index < end_frame:
                         toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
 
                         # TODO:Jack Get vibration data
+
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
-                        vibImage_rgba = None
+                        vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50)
                         if vibImage_rgba is not None:
                             resizedframe = overlay_image(resizedframe, vibImage_rgba, loc_x=50, loc_y=400, dim_x=50, dim_y=50) # overlay at this position
 

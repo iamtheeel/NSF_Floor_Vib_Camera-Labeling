@@ -26,6 +26,7 @@ class vibDataWindow:
         self.oldData = old_data
         self.window = window
         self.dataTimeRange_s = [0, 0]
+        self.img_rgba = None
 
     def print_attrs(self, name, obj):
         print(f"\n📂 Path: {name}")
@@ -90,7 +91,9 @@ class vibDataWindow:
     def time_to_seconds(self, t):
         return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6
 
-    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, preTrigger=0.0):
+    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, preTrigger=0.0, chList=None):
+        if chList is None:
+            chList = self.chToPlot
         if isinstance(target_time_str, str):
             target_time_obj = datetime.strptime(target_time_str, "%H:%M:%S.%f").time()
         else:
@@ -110,12 +113,13 @@ class vibDataWindow:
 
         print(f"Jumping to {time_offset_sec:.3f}s after trigger for trial {trial_num}")
         sliced_data = self.slice_data(
-            dataBlock, self.chToPlot, [time_offset_sec, time_offset_sec + self.window], dataCapRate, trial=-1
+            dataBlock, chList, [time_offset_sec, time_offset_sec + self.window], dataCapRate, trial=-1
         )
 
-        time_axis = np.linspace(time_offset_sec, time_offset_sec + self.window, sliced_data.shape[1])
+        time_axis = np.linspace(time_offset_sec, time_offset_sec + window_s, sliced_data.shape[1])
+
         plt.figure()
-        for i, ch in enumerate(self.chToPlot):
+        for i, ch in enumerate(chList):
             plt.plot(time_axis, sliced_data[i], label=f"Ch {ch}")
         plt.title(f"Trial {trial_num} - Time {target_time_str}")
         plt.xlabel("Time (s)")
@@ -123,7 +127,18 @@ class vibDataWindow:
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.show()
+  
+    
+        from matplotlib.backends.backend_agg import FigureCanvasAgg #as FigureCanvas
+        fig=plt.gcf()#get the figure
+        canv = FigureCanvasAgg(fig) # make a canvas
+        canv.draw()  # make the memory do the thing
+        buf=canv.buffer_rgba() # a buffer of the image
+        self.img_rgba = np.asarray(buf)  # Return 
+        ## TO load it: img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_RGBA2BGR)
+        ##             We will work on overlaying it later...
+
+        #plt.show()
 
     #external call
     def vib_get(self, time, distanceFromCam, hhmmss=False, debug=False):
@@ -131,21 +146,25 @@ class vibDataWindow:
         if debug:
             print(f"Data cap rate: {fs_hz} Hz, Record Length: {recordLen_s}s, Pre-trigger: {preTrigger_s}s, Trials: {nTrials}")
 
-        for chunk in self.trialToPlot:
+        # Assume self.trialToPlot is a single integer (the trial to use)
+        trial_num = self.trialToPlot if isinstance(self.trialToPlot, int) else self.trialToPlot[0]
+        dataBlock_numpy, triggerTime = self.load_data(trial=trial_num)
+
+        for ch in self.chToPlot:
             if debug:
-                print(f"Trial {chunk['trial']} at {chunk['time']}")
-            dataBlock_numpy, triggerTime = self.load_data(trial=chunk(self.trialToPlot))
+                print(f"Plotting Trial {trial_num}, Channel {ch}, Time {time}")
             self.show_data_at_time(
                 target_time_str=time,
                 dataBlock=dataBlock_numpy,
                 trigger_time=triggerTime,
-                trial_num=self.trialToPlot,
+                trial_num=trial_num,
                 dataCapRate=fs_hz,
-                preTrigger=preTrigger_s
+                preTrigger=preTrigger_s,
+                chList=[ch]  # Pass only the current channel
             )
-            #TODO: return as an object to be displayed
-            #TODO: distance from camera vib calculation
-        return
+        # TODO: return as an object to be displayed
+        # TODO: distance from camera vib calculation
+        return self.img_rgba
 
 
             
