@@ -126,7 +126,7 @@ class vibDataWindow:
         plt.show()
 
     #external call
-    def vib_get(self, time, trialList, distanceFromCam, hhmmss=False, debug=False):
+    def vib_get(self, time, distanceFromCam, hhmmss=False, debug=False):
         fs_hz, recordLen_s, preTrigger_s, nTrials = self.load_parameters()
         if debug:
             print(f"Data cap rate: {fs_hz} Hz, Record Length: {recordLen_s}s, Pre-trigger: {preTrigger_s}s, Trials: {nTrials}")
@@ -139,10 +139,11 @@ class vibDataWindow:
                 target_time_str=chunk['time'],
                 dataBlock=dataBlock_numpy,
                 trigger_time=triggerTime,
-                trial_num=chunk(self.trialToPlot),
+                trial_num=chunk(self.trial),
                 dataCapRate=fs_hz,
                 preTrigger=preTrigger_s
             )
+        return
 
 
             
