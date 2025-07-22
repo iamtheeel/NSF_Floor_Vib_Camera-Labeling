@@ -10,6 +10,7 @@
 modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
 
 #vidDir = r"E:\STARS" #Kara
+#vidDir = "." #Josh
 vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
 
 ##
@@ -55,7 +56,7 @@ Playback = True
 
 #North_South Runs
 #Kara's video file
-dir = r"StudentData\25_06_18\subject_1"
+dir = r"StudentData/25_06_18/subject_1"
 file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Yoko's video file
 #dir = r"StudentData\25_06_18\subject_3"
