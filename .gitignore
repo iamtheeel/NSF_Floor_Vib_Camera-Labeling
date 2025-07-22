@@ -8,3 +8,4 @@ StudentData/*/*/*/*/*.jpg
 *.asf
 *.hdf5
 *.mp4
+*.pyc
