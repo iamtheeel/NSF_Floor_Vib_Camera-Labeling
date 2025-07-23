@@ -17,12 +17,11 @@ from scipy.signal import decimate
 
 
 class vibDataWindow:
-    def __init__(self, dir_path, data_file, trial_to_plot=[0], ch_to_plot=[1], old_data=False, window=5):
+    def __init__(self, dir_path, data_file, trial_to_plot=[0],  old_data=False, window=5):
         self.dir = dir_path
         self.dataFile = data_file
         self.dirFile = f"{self.dir}/{self.dataFile}"
         self.trialToPlot = trial_to_plot
-        self.chToPlot = ch_to_plot
         self.oldData = old_data
         self.window = window
         self.dataTimeRange_s = [0, 0]
@@ -91,9 +90,7 @@ class vibDataWindow:
     def time_to_seconds(self, t):
         return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6
 
-    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, preTrigger=0.0, chList=None):
-        if chList is None:
-            chList = self.chToPlot
+    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, chList, colVar = 'red', preTrigger=0.0):
         if isinstance(target_time_str, str):
             target_time_obj = datetime.strptime(target_time_str, "%H:%M:%S.%f").time()
         else:
@@ -111,7 +108,7 @@ class vibDataWindow:
                 print(f"Requested time {target_time_str} is out of bounds.")
                 return
 
-        print(f"Jumping to {time_offset_sec:.3f}s after trigger for trial {trial_num}")
+        #print(f"Jumping to {time_offset_sec:.3f}s after trigger for trial {trial_num}")
         sliced_data = self.slice_data(
             dataBlock, chList, [time_offset_sec, time_offset_sec + self.window], dataCapRate, trial=-1
         )
@@ -121,9 +118,10 @@ class vibDataWindow:
         plt.figure()
         plt.ioff()
         for i, ch in enumerate(chList):
-            plt.plot(time_axis, sliced_data[i], label=f"Ch {ch}")
+            plt.plot(time_axis, sliced_data[i], label=f"Ch {ch}", color = colVar)
         plt.title(f"Trial {trial_num} - Time {target_time_str}")
         plt.xlabel("Time (s)")
+        plt.ylim([-.01,.01])
         plt.ylabel("Vibration (gs)")
         plt.legend()
         plt.grid(True)
@@ -142,7 +140,7 @@ class vibDataWindow:
         #plt.show()
 
     #external call
-    def vib_get(self, time, distanceFromCam, hhmmss=False, debug=False):
+    def vib_get(self, time, chToPlot, colVar = 'red', distanceFromCam=-1, hhmmss=False, debug=False):
         fs_hz, recordLen_s, preTrigger_s, nTrials = self.load_parameters()
         if debug:
             print(f"Data cap rate: {fs_hz} Hz, Record Length: {recordLen_s}s, Pre-trigger: {preTrigger_s}s, Trials: {nTrials}")
@@ -152,7 +150,7 @@ class vibDataWindow:
         dataBlock_numpy, triggerTime = self.load_data(trial=trial_num)
 
         
-        for ch in self.chToPlot:
+        for ch in chToPlot:
             if debug:
                 print(f"Plotting Trial {trial_num}, Channel {ch}, Time {time}")
             self.show_data_at_time(
@@ -162,7 +160,9 @@ class vibDataWindow:
                 trial_num=trial_num,
                 dataCapRate=fs_hz,
                 preTrigger=preTrigger_s,
+                colVar = colVar,
                 chList=[ch]  # Pass only the current channel
+
             )
         
         # TODO: return as an object to be displayed

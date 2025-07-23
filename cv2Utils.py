@@ -17,7 +17,7 @@ def overlay_image(frame, overlay, loc_x, loc_y, dim_x, dim_y):
 
     h, w = overlay.shape[:2]
     #print(f"b) Frame shape: {frame.shape}")
-    frame[loc_y:loc_y+h, loc_x:loc_x+w] = overlay
+    frame[loc_y-h:loc_y, loc_x:loc_x+w] = overlay
     #print(f"c) Frame shape: {frame.shape}")
 
     return frame
