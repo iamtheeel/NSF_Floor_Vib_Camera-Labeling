@@ -733,6 +733,92 @@ def append_avg_foot_positions(footstep_times, foot_locations):
 
     return footstep_times
 
+def find_edges(frame):
+    WIDTH = frame.shape[1]
+    HEIGHT = frame.shape[0]
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blur, 50, 150)
+
+    # initialize edge tracking variables
+    left_tracker = 0
+    right_tracker = WIDTH
+
+    # Initialize edge lines
+    left_line = ((0, 0), (0, HEIGHT))
+    right_line = ((WIDTH, 0), (WIDTH, HEIGHT))
+
+    # Detect lines using Hough Transform
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=10)
+
+    # Define bounding box
+    LEFT = 800
+    RIGHT = 1900
+    TOP = 100
+    BOTTOM = 1000
+
+    # iterate through the detected lines
+    if lines is not None:
+        for line in lines:
+            x_1, y_1, x_2, y_2 = line[0]
+
+            # Correct orientation: y1 is top, y2 is bottom
+            if y_2 > y_1:
+                x1, y1 = x_1, y_1
+                x2, y2 = x_2, y_2
+            else:
+                x1, y1 = x_2, y_2
+                x2, y2 = x_1, y_1
+
+            # check all points inside bounding box
+            if (x1 < LEFT or x2 < LEFT):
+                continue
+            if (x1 > RIGHT or x2 > RIGHT):
+                continue
+            if (y1 < TOP or y2 < TOP):
+                continue
+            if (y1 > BOTTOM or y2 > BOTTOM):
+                continue
+            if y2 != y1: # avoid division by zero
+                angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+                m = (x2 - x1) / (y2 - y1)
+                # find right edges
+                if 0.6 < m < 0.7:
+                    x_top = int(x1 + m * (0 - y1))
+                    x_bottom = int(x1 + m * (HEIGHT - y1))
+                    if x_bottom < right_tracker:
+                        right_tracker = x_bottom
+                        right_floor_edge = ((x_top, 0), (x_bottom, HEIGHT))
+
+                # find left edges
+                elif -.3 < m < -.2:
+                    x_top = int(x1 + m * (0 - y1))
+                    x_bottom = int(x1 + m * (HEIGHT - y1))
+                    if x_bottom > left_tracker:
+                        left_tracker = x_bottom
+                        left_floor_edge = ((x_top, 0), (x_bottom, HEIGHT))
+
+    return right_floor_edge, left_floor_edge
+
+def x_on_line_at_y(x1, y1, x2, y2, y_target):
+    if y2 == y1:
+        return None  # horizontal line — can't evaluate
+    m = (x2 - x1) / (y2 - y1)
+    return x1 + m * (y_target - y1)
+
+
+def meters_from_left_wall(x, y, left_line, right_line, real_width_meters=3.3528):
+    x_left = x_on_line_at_y(*left_line[0], *left_line[1], y)
+    x_right = x_on_line_at_y(*right_line[0], *right_line[1], y)
+
+    if x_left is None or x_right is None or x_right == x_left:
+        return None  # invalid line or vertical overlap
+
+    width_px = x_right - x_left
+    fraction = (x - x_left) / width_px
+    meters = fraction * real_width_meters
+    return meters
+
 def video_launcher(DEVELOPER, start_time=0, end_time=None):
     """
     Launches the video player with the specified video.
@@ -747,6 +833,15 @@ def video_launcher(DEVELOPER, start_time=0, end_time=None):
         print("Error: Could not open video.")
         exit()
     print(f"Opening video: {video_path}")
+
+    # get first frame to find floor to wall edges
+    success, first_frame = videoObject.read() # Returns a boolean and the first frame
+    if not success: # If the frame was not read successfully, break the loop
+        print("Failed to read first frame")
+        exit()
+    else:
+        right_floor_edge, left_floor_edge = find_edges(first_frame)
+
     # Video properties    
     fps = 30 # Frames per second
     fCount = videoObject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
@@ -909,15 +1004,25 @@ def video_launcher(DEVELOPER, start_time=0, end_time=None):
                     track_frames[i]["toeVel"] = toeVel_mps
                     track_frames[i]["heelVel"] = toeVel_mps
 
+                    # Calculate horizontal position from left wall
+                    left_x = landmarks[29].x * width
+                    right_x = landmarks[30].x * width
+                    y_pos = (landmarks[29].y + landmarks[30].y) / 2 * height  # average y for consistency
+
+                    left_x_m = meters_from_left_wall(left_x, y_pos, left_floor_edge, right_floor_edge)
+                    right_x_m = meters_from_left_wall(right_x, y_pos, left_floor_edge, right_floor_edge)
+
                     text = [
-                        f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
-                        f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
-                        f"Left Heel: {track_frames[i]["LeftHeel_Dist"]:.2f} m", 
-                        f"Right Heel: {track_frames[i]["RightHeel_Dist"]:.2f} m",
-                        f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
-                        f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
-                        f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
-                        ]
+                        f"Left Toe: {track_frames[i]['LeftToe_Dist']:.2f} m", 
+                        f"Left Heel: {track_frames[i]['LeftHeel_Dist']:.2f} m", 
+                        f"Left X: {left_x_m:.2f} m" if left_x_m else "Left X: N/A",
+                        f"Right Toe: {track_frames[i]['RightToe_Dist']:.2f} m",
+                        f"Right Heel: {track_frames[i]['RightHeel_Dist']:.2f} m",
+                        f"Right X: {right_x_m:.2f} m" if right_x_m else "Right X: N/A",
+                        f"Toe Vel: {track_frames[i]['toeVel']:.2f} m/s",
+                        f"Heel Vel: {track_frames[i]['heelVel']:.2f} m/s",
+                        f"Seconds: {track_frames[i]['seconds_sinceMid']:.3f} s"
+                    ]
                     framewith_data +=1
 
                     # TODO: Add vibration data to frame
