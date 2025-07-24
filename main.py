@@ -28,7 +28,7 @@ import cv2 # opencv-python
 import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
-#import csv
+import csv
 
 # Media Pipe
 import mediapipe as mp  # pip install mediapipe
@@ -55,8 +55,8 @@ Playback = True
 
 #North_South Runs
 #Kara's video file
-dir = r"StudentData\25_06_18\subject_1"
-file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+#dir = r"StudentData\25_06_18\subject_1"
+#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 #Yoko's video file
 #dir = r"StudentData\25_06_18\subject_3"
 #file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
@@ -104,8 +104,8 @@ file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 
 #pollvintercept Jack runs
 dir = r"StudentData\25_07-10"
-file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
-#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
+#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
@@ -140,7 +140,7 @@ vib = vibDataWindow(
 )
 
 
-"""
+
 # Define video writers (90-frame clip, initialized when needed)
 out_full = None
 out_crop = None
@@ -152,10 +152,10 @@ maintain_height_max = height
 maintain_height_min = 0
 maintain_width_max = width
 maintain_width_min = 0
-"""
 
-#fourcc = cv2.VideoWriter_fourcc(*'XVID')
-#output_dir = r"E:\STARS\Clips"  # Set your own output path
+
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+output_dir = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData"  # Set your own output path
 
 #=== Setting up mediapipe
 ## Configurations:
@@ -654,7 +654,7 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 # === Main code === #
 
 # === Set time to start/end
-start_time = 5
+start_time = 0
 
 start_frame = int(start_time * fps) # Start frame for the clip
 #end_time = 30 # End time for the clip in seconds
@@ -686,16 +686,17 @@ windowInc_s = 0.5 #1
 pixel_incm = 6
 cropped_pixel_incm = 3
 
+
 # === Write to file
-#csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
-#with open(csv_path, mode='w', newline='') as file:
-#      writer = csv.writer(file)
-#      writer.writerow([
-#        #"Frame", 
-#        "Time", "Seconds_Mid",
-#        "LeftHeel_Dist", "RightHeel_Dist" , 
-#        "LeftToe_Dist" , "RightToe_Dist",
-#    ]) 
+csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData\footstep_data_poll.csv"
+with open(csv_path, mode='w', newline='') as file:
+      writer = csv.writer(file)
+      writer.writerow([
+                "Time", "Seconds_Mid",
+        "LeftHeel_Dist", "RightHeel_Dist" , 
+        "LeftToe_Dist" , "RightToe_Dist",
+    ]) 
+
 
 # === Prompt for user
 print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
@@ -882,24 +883,22 @@ while frame_Index < end_frame:
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
         
-"""                        
-#            with open(csv_path, mode='a', newline='') as file:
-#                writer = csv.writer(file)
-#                writer.writerow([
-#                #frame_Index,
-#                timestamp,
-#                total_seconds,  # Convert to seconds
-#                left_distHeel,
-#                right_distHeel,
-#                left_distToe,
-#                right_distToe
-#            ])
-            
-    # === Save to CSV (✅ append only)
-    # === Save to CSV (✅ append only)
-#            if clip_start <= frame_Index < clip_end:
-#                if out_full is None:
-#                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
+                        
+    """with open(csv_path, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([
+        #frame_Index,
+        total_seconds,  # Convert to seconds
+        left_distHeel,
+        right_distHeel,
+        left_distToe,
+        right_distToe
+    ])
+            """
 
-#                out_full.write(raw_frame)
-"""
+    if clip_start <= frame_Index < clip_end:
+        if out_full is None:
+            out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
+
+        out_full.write(raw_frame)
+
