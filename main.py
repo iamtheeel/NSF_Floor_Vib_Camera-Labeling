@@ -5,12 +5,12 @@
 # Label Vibration Data with walking pace from camera
 ####
 
-#modelDir = r"C:\Users\smitt\STARS\\" #Kara
+modelDir = r"C:\Users\smitt\STARS\\" #Kara
 #modelDir = "../media-pipeModels/"   #Josh
-modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
+#modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
 
-#vidDir = r"E:\STARS" #Kara
-vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
+vidDir = r"E:\STARS" #Kara
+#vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
 
 ##
 # Pause = Space, 
@@ -89,8 +89,10 @@ Playback = True
 #file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 
 #Jack's video file
+dir = r"StudentData\25_07_10\subject_2"
 #dir = r"StudentData\25_06_18\subject_2"
-#file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
+#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 #file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
 #file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
@@ -104,8 +106,8 @@ Playback = True
 
 #pollvintercept Jack runs
 dir = r"StudentData\25_07-10"
-#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
-file = r"poll_run_7-10-2025_10-50-56 AM.asf"
+file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
@@ -131,21 +133,22 @@ displayRezsquare = (int(height/dispFact), int(height/dispFact))
 
 #vibration properties
 vib = vibDataWindow(
-    dir_path=r'C:\Users\notyo\Documents\STARS\StudentData\25_07-10',
+    dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
     data_file=r"Jack_clockTest_interuptVPoll.hdf5",
-    trial_to_plot=0,
-    ch_to_plot=[1],
+    trial_to_plot=1,
     old_data=False,
     window=5
 )
-
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
+out = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output.mp4", fourcc, fps, displayRez)
+outCrop = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output_crop.mp4", fourcc, fps, displayRezsquare)
 
 
 # Define video writers (90-frame clip, initialized when needed)
 out_full = None
 out_crop = None
 
-clip_start = 0  # Example: clip starts at frame 300
+clip_start = 0  # Example: clip starts at frame 200
 clip_length = int(fCount)  # Length of the clip in frames
 clip_end = clip_start + clip_length
 maintain_height_max = height
@@ -187,6 +190,11 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 # === Functions
+
+def findPixfromDist(distance):
+    pixels = 7916.1069/(distance -1.0263) -86.1396
+    return pixels
+
 def get_key(delay=0):
     key1 = cv2.waitKey(delay)
 
@@ -622,7 +630,7 @@ def grow_constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None,
     progress = max(0, min(progress, 1))  # Ensures frame_index is within range
     # Define a target multiplier as a function of frame progress
     # For example: linearly increases from 1 to 4 as progress goes from 0 to 1
-    target_multiplier = 1 + 6 * progress
+    target_multiplier = 1 + 16 * progress
     target_px = raw_px * target_multiplier
 
     # If this is the first frame, no previous px to smooth from
@@ -651,14 +659,17 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 
     return int(smoothed_px), smoothed_px
 
+def safe_divide(numerator, denominator):
+    return numerator / denominator if denominator != 0 else 0
+
 # === Main code === #
 
 # === Set time to start/end
 start_time = 0
 
 start_frame = int(start_time * fps) # Start frame for the clip
-#end_time = 30 # End time for the clip in seconds
-end_frame = int(fCount)
+end_time = 30 # End time for the clip in seconds
+end_frame = fps*end_time #int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -714,6 +725,13 @@ vibImage_rgba = None
 windowName = "Main Frame:"
 cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
 
+success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
+initial_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+
+print(f"Initial seconds: {initial_seconds}")
+
+videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
+
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
@@ -724,7 +742,8 @@ while frame_Index < end_frame:
             print("Failed to read frame")
             exit()
         # === Saves seconds since midnight
-        total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+        total_seconds = seconds_sinceMidnight(time_tracker, raw_frame) 
+        print(f"Total seconds: {total_seconds}")
         # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
         cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
@@ -772,7 +791,7 @@ while frame_Index < end_frame:
                 track_frames[i]["RightHeel_Dist"] = right_distHeel
                 track_frames[i]["LeftHeel_Dist"] = left_distHeel 
                 
-                track_frames[i]["seconds_sinceMid"] = total_seconds
+                track_frames[i]["seconds_sinceMid"] = safe_divide(i, fps)
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
                 if framewith_data >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
@@ -787,23 +806,39 @@ while frame_Index < end_frame:
 
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
-                        vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50)
+                        vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[1-1])
+                        vibImage_rgba2 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[2-1], colVar ='blue')
+                        vibImage_rgba3 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[3-1], colVar ='orange')
+                        vibImage_rgba4 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[4-1], colVar ='darkgoldenrod')
+                        vibImage_rgba5 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[5-1], colVar ='green')
+                        vibImage_rgba6 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[6-1], colVar ='purple')
+                        vibImage_rgba7 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[7-1], colVar ='olive')
+
                         
 
 
                 if vibImage_rgba is not None:
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba, loc_x=550, loc_y=1000, dim_x=300, dim_y=300) # overlay at this position
-
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba, loc_x=950, loc_y=int(findPixfromDist(7.59)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba2, loc_x=1900, loc_y=int(findPixfromDist(10.26)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba3, loc_x=1000, loc_y=int(findPixfromDist(12.32)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba4, loc_x=1750, loc_y=int(findPixfromDist(13.99)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba5, loc_x=1050, loc_y=int(findPixfromDist(17)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba6, loc_x=1600, loc_y=int(findPixfromDist(23.32)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba7, loc_x=1100, loc_y=int(findPixfromDist(26.82)), dim_x=200, dim_y=200) # overlay at this position
+                    
 
                 track_frames[i]["toeVel"] = toeVel_mps
                 track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
+                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s",
+                    f"Left Heel: {track_frames[i]["LeftHeel_Dist"]:.2f} m", 
                     f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
+                    f"Right Heel: {track_frames[i]["RightHeel_Dist"]:.2f} m",
                     f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    "Previous Window: ",
                     f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
                     f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
                     ]
                 framewith_data +=1
 
@@ -815,22 +850,24 @@ while frame_Index < end_frame:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-            # ===resize for viewing and save in array
             resized_rawframe = cv2.resize(raw_frame, displayRez)
-            print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
-
             resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
+            # ===resize for viewing and save in array
+            put_text(text,  resizedframe)
+            put_text(text, resized_rawframe)
+            #print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
             track_frames[i]["frame"] = resized_rawframe
             track_frames[i]["cropped_frame"] = resizedframe
-            put_text(text, track_frames[i]["cropped_frame"])
-            put_text(text, track_frames[i]["frame"])
+            out.write(resized_rawframe)  # Save the frame to video
+            outCrop.write(resizedframe)  # Save the frame to video
+
     else:
         resized_rawframe = track_frames[i]["frame"]
         resizedframe = track_frames[i]["cropped_frame"]
 
     cv2.imshow("Zoomed Frame: ", resizedframe)
-    cv2.imshow(windowName, resized_rawframe)
-    cv2.resizeWindow(windowName, 1433, 756) #TODO: use from vars
+    cv2.imshow("Frame", resized_rawframe)
+    #cv2.resizeWindow(windowName, 1433, 756) #TODO: use from vars
 
     # Navigation
     key1 = cv2.waitKey(waitKeyP) #& 0xFF  
@@ -880,8 +917,12 @@ while frame_Index < end_frame:
         print("Quitting.")
         exit()
 
+
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
+out.release()
+outCrop.release()
+cv2.destroyAllWindows()
         
                         
     """with open(csv_path, mode='a', newline='') as file:
