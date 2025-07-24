@@ -138,7 +138,8 @@ vib = vibDataWindow(
     old_data=False,
     window=5
 )
-
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
+out = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output.mp4", fourcc, fps, displayRez)
 
 """
 # Define video writers (90-frame clip, initialized when needed)
@@ -662,8 +663,8 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 start_time = 5
 
 start_frame = int(start_time * fps) # Start frame for the clip
-#end_time = 30 # End time for the clip in seconds
-end_frame = int(fCount)
+end_time = 30 # End time for the clip in seconds
+end_frame = fps*end_time #int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -841,6 +842,7 @@ while frame_Index < end_frame:
 
             resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
             track_frames[i]["frame"] = resized_rawframe
+            out.write(resized_rawframe)  # Save the frame to video
             track_frames[i]["cropped_frame"] = resizedframe
             put_text(text, track_frames[i]["cropped_frame"])
             put_text(text, track_frames[i]["frame"])
@@ -900,8 +902,10 @@ while frame_Index < end_frame:
         print("Quitting.")
         exit()
 
+
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
+out.release()
         
 """                        
 #            with open(csv_path, mode='a', newline='') as file:
