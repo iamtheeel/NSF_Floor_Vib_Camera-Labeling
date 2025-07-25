@@ -18,7 +18,7 @@ def create_Trackframes(firstframe, lastframe, *definitions):
     return track_frames
 
 # Load the saved video
-cap = cv2.VideoCapture(r"E:\STARS\StudentData\Exported_Video\annotated_output.mp4")
+cap = cv2.VideoCapture(r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\annotated_output.mp4")
 
 # Get total frames
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -26,7 +26,7 @@ fps = 30
 
 start_time = 0
 start_frame = int(start_time * fps) # Start frame for the clip
-end_time = 30 # End time for the clip in seconds
+end_time = 100 # End time for the clip in seconds
 end_frame = int(fps*end_time) #int(fCount)
 frame_Index = start_frame
 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
@@ -44,7 +44,10 @@ while frame_Index < end_frame:
         success, raw_frame = cap.read() # Returns a boolean and the next frame
         if not success: # If the frame was not read successfully, break the loop
             print("Failed to read frame")
-            exit()
+            waitKeyP = 0
+            frame_Index -= 1 # Go back one frame
+            i -=1
+            #exit()
         track_frames[i]["frame"] = raw_frame
     else:
         raw_frame = track_frames[i]["frame"]
