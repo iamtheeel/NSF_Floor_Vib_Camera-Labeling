@@ -9,3 +9,5 @@ StudentData/*/*/*/*/*.jpg
 *.hdf5
 *.mp4
 *.pyc
+__pycache__/
+
