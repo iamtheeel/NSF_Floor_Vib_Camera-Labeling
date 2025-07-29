@@ -1,0 +1,11 @@
+# ignore python cache files
+__pycache__/
+*.pyc
+
+# ignore video files
+*.asf
+*.mp4
+
+# ignore vibration files
+*.hdf5
+
