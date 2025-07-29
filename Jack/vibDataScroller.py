@@ -22,7 +22,7 @@ oldData = False
 dir = r'C:\Users\notyo\Documents\STARS\StudentData\25_07-10'
 dataFile = "Jack_clockTest_interuptVPoll.hdf5"
 dirFile = f"{dir}/{dataFile}"
-chToPlot = [1]  # Example: plot channels 1, 2, and 5 (1-based index)
+chToPlot = [2, 3, 5]  # Example: plot channels 1, 2, and 5 (1-based index)
 target_fps = 1  # Target frames per second for scrolling plot
 
 ### Data Loader Functions ###
@@ -123,7 +123,7 @@ def intervalOutputScroll(dataBlock_sliced, dataCapRate_hz, target_fps=15, channe
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Vibration")
     ax.set_title("Scrolling Vibration Data (5s window)")
-    ax.legend()
+    ax.legend(loc="upper right")
     plt.tight_layout()
 
     for i in range(n_points):
@@ -133,6 +133,7 @@ def intervalOutputScroll(dataBlock_sliced, dataCapRate_hz, target_fps=15, channe
     for ch_idx, line in enumerate(lines):
         line.set_data(list(time_window), list(data_windows[ch_idx]))
     ax.set_xlim(time_window[0], time_window[-1])
+    ax.set_ylim(-0.025, 0.025)  # <-- Add this line
     fig.canvas.draw()
     fig.canvas.flush_events()
 
@@ -155,6 +156,7 @@ def intervalOutputScroll(dataBlock_sliced, dataCapRate_hz, target_fps=15, channe
         for ch_idx, line in enumerate(lines):
             line.set_data(list(time_window), list(data_windows[ch_idx]))
         ax.set_xlim(time_window[0], time_window[-1])
+        ax.set_ylim(-0.025, 0.025)  # <-- Add here too
         fig.canvas.draw()
         fig.canvas.flush_events()
 

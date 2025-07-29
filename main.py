@@ -28,7 +28,7 @@ import cv2 # opencv-python
 import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
-#import csv
+import csv
 
 # Media Pipe
 import mediapipe as mp  # pip install mediapipe
@@ -91,7 +91,8 @@ Playback = True
 #Jack's video file
 dir = r"StudentData\25_07_10\subject_2"
 #dir = r"StudentData\25_06_18\subject_2"
-file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 #file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
 #file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
@@ -104,8 +105,8 @@ file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
 #pollvintercept Jack runs
-#dir = r"StudentData\25_07-10"
-#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
+dir = r"StudentData\25_07-10"
+file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
 #file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
@@ -132,15 +133,17 @@ displayRezsquare = (int(height/dispFact), int(height/dispFact))
 
 #vibration properties
 vib = vibDataWindow(
-    dir_path=r"E:\STARS\StudentData\25_07_10",
+    dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
     data_file=r"Jack_clockTest_interuptVPoll.hdf5",
-    trial_to_plot=0,
+    trial_to_plot=1,
     old_data=False,
     window=5
 )
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
+out = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output.mp4", fourcc, fps, displayRez)
+outCrop = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output_crop.mp4", fourcc, fps, displayRezsquare)
 
 
-"""
 # Define video writers (90-frame clip, initialized when needed)
 out_full = None
 out_crop = None
@@ -152,10 +155,10 @@ maintain_height_max = height
 maintain_height_min = 0
 maintain_width_max = width
 maintain_width_min = 0
-"""
 
-#fourcc = cv2.VideoWriter_fourcc(*'XVID')
-#output_dir = r"E:\STARS\Clips"  # Set your own output path
+
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+output_dir = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData"  # Set your own output path
 
 #=== Setting up mediapipe
 ## Configurations:
@@ -656,14 +659,17 @@ def constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alph
 
     return int(smoothed_px), smoothed_px
 
+def safe_divide(numerator, denominator):
+    return numerator / denominator if denominator != 0 else 0
+
 # === Main code === #
 
 # === Set time to start/end
-start_time = 5
+start_time = 0
 
 start_frame = int(start_time * fps) # Start frame for the clip
-#end_time = 30 # End time for the clip in seconds
-end_frame = int(fCount)
+end_time = 30 # End time for the clip in seconds
+end_frame = fps*end_time #int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -691,16 +697,17 @@ windowInc_s = 0.5 #1
 pixel_incm = 6
 cropped_pixel_incm = 3
 
+
 # === Write to file
-#csv_path = r"E:\STARS\North_Southplots\06_18_2025\Bad\Sub_1_Run_1_11-45-46_AM.csv"
-#with open(csv_path, mode='w', newline='') as file:
-#      writer = csv.writer(file)
-#      writer.writerow([
-#        #"Frame", 
-#        "Time", "Seconds_Mid",
-#        "LeftHeel_Dist", "RightHeel_Dist" , 
-#        "LeftToe_Dist" , "RightToe_Dist",
-#    ]) 
+csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData\footstep_data_poll.csv"
+with open(csv_path, mode='w', newline='') as file:
+      writer = csv.writer(file)
+      writer.writerow([
+                "Time", "Seconds_Mid",
+        "LeftHeel_Dist", "RightHeel_Dist" , 
+        "LeftToe_Dist" , "RightToe_Dist",
+    ]) 
+
 
 # === Prompt for user
 print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
@@ -718,6 +725,13 @@ vibImage_rgba = None
 windowName = "Main Frame:"
 cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
 
+success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
+initial_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+
+print(f"Initial seconds: {initial_seconds}")
+
+videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
+
 while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
@@ -728,7 +742,8 @@ while frame_Index < end_frame:
             print("Failed to read frame")
             exit()
         # === Saves seconds since midnight
-        total_seconds = seconds_sinceMidnight(time_tracker, raw_frame)
+        total_seconds = seconds_sinceMidnight(time_tracker, raw_frame) 
+        print(f"Total seconds: {total_seconds}")
         # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
         cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
@@ -767,7 +782,6 @@ while frame_Index < end_frame:
                 track_frames[i]["landmarks"] = landmarks # Store the landmarks in the track_frames list
                     # === Calculates distance
                 left_distHeel = find_dist_from_y(track_frames[i]["landmarks"][29].y*height)
-                print(f"{findPixfromDist(left_distHeel)}")
                 right_distHeel = find_dist_from_y(track_frames[i]["landmarks"][30].y*height)
                 left_distToe = find_dist_from_y(track_frames[i]["landmarks"][31].y*height)
                 right_distToe = find_dist_from_y(track_frames[i]["landmarks"][32].y*height)
@@ -777,7 +791,7 @@ while frame_Index < end_frame:
                 track_frames[i]["RightHeel_Dist"] = right_distHeel
                 track_frames[i]["LeftHeel_Dist"] = left_distHeel 
                 
-                track_frames[i]["seconds_sinceMid"] = total_seconds
+                track_frames[i]["seconds_sinceMid"] = safe_divide(i, fps)
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
                 if framewith_data >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
@@ -817,13 +831,14 @@ while frame_Index < end_frame:
                 track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
-                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
-                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s",
                     f"Left Heel: {track_frames[i]["LeftHeel_Dist"]:.2f} m", 
+                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
                     f"Right Heel: {track_frames[i]["RightHeel_Dist"]:.2f} m",
+                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
+                    "Previous Window: ",
                     f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
                     f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s"
                     ]
                 framewith_data +=1
 
@@ -835,15 +850,17 @@ while frame_Index < end_frame:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
-            # ===resize for viewing and save in array
             resized_rawframe = cv2.resize(raw_frame, displayRez)
-            #print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
-
             resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
+            # ===resize for viewing and save in array
+            put_text(text,  resizedframe)
+            put_text(text, resized_rawframe)
+            #print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
             track_frames[i]["frame"] = resized_rawframe
             track_frames[i]["cropped_frame"] = resizedframe
-            put_text(text, track_frames[i]["cropped_frame"])
-            put_text(text, track_frames[i]["frame"])
+            out.write(resized_rawframe)  # Save the frame to video
+            outCrop.write(resizedframe)  # Save the frame to video
+
     else:
         resized_rawframe = track_frames[i]["frame"]
         resizedframe = track_frames[i]["cropped_frame"]
@@ -900,27 +917,29 @@ while frame_Index < end_frame:
         print("Quitting.")
         exit()
 
+
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
+out.release()
+outCrop.release()
+cv2.destroyAllWindows()
         
-"""                        
-#            with open(csv_path, mode='a', newline='') as file:
-#                writer = csv.writer(file)
-#                writer.writerow([
-#                #frame_Index,
-#                timestamp,
-#                total_seconds,  # Convert to seconds
-#                left_distHeel,
-#                right_distHeel,
-#                left_distToe,
-#                right_distToe
-#            ])
-            
-    # === Save to CSV (✅ append only)
-    # === Save to CSV (✅ append only)
-#            if clip_start <= frame_Index < clip_end:
-#                if out_full is None:
-#                    out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
+                        
+    """with open(csv_path, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([
+        #frame_Index,
+        total_seconds,  # Convert to seconds
+        left_distHeel,
+        right_distHeel,
+        left_distToe,
+        right_distToe
+    ])
+            """
 
-#                out_full.write(raw_frame)
-"""
+    if clip_start <= frame_Index < clip_end:
+        if out_full is None:
+            out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
+
+        out_full.write(raw_frame)
+
