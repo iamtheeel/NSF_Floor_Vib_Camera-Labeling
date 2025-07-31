@@ -7,7 +7,8 @@ cc = CameraCalibrator(RESEARCHER)
 
 # select script to run
 RUN_CALIBRATION = False
-RUN_DISTORTION_REMOVAL = True
+RUN_DISTORTION_REMOVAL = False
+CALCULATE_PERSPECTIVE_TRANSFORM = True
 
 """
 To calibrate new camera settings,
@@ -25,9 +26,15 @@ if RUN_CALIBRATION:
     "zoom": 1,
     "focus": 875,
     "autofocus": "on"
-}
+    }
     cc.calibrate(CAMERA_SETTINGS)
 
 # undistort the video specified in RESEARCHER_settings.py
+# times are in seconds
 if RUN_DISTORTION_REMOVAL:
     cc.remove_distortion(start_time=15, end_time=20)
+
+# calculate perspective transform from CSV file
+# the CSV file should contain pixel coordinates and corresponding real-world coordinates
+if CALCULATE_PERSPECTIVE_TRANSFORM:
+    cc.calculate_perspective_transform()
