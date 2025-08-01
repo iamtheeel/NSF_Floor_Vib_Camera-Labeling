@@ -107,12 +107,14 @@ Playback = True
 
 #pollvintercept Jack runs
 dir = r"StudentData/25_07-10"
-file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
-#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
+#file = r"intercept_run_7-10-2025_10-45-46 AM.asf" # Vib data run 0
+videoInputFile = r"poll_run_7-10-2025_10-50-56 AM.asf" # Vib data run 1, stomp lines up with 1 sec first window
 
 #dir = r"E:\STARS\07_10_2025_Vid_Data"
 #file = "intercept_run_7-10-2025_10-45-46 AM.asf"
-fileName = f"{vidDir}/{dir}/{file}"
+
+output_dir = f"{vidDir}/{dir}"  # Set your own output path
+fileName = f"{output_dir}/{videoInputFile}"
 print(f"Opening video: {fileName}")
 
 
@@ -135,17 +137,17 @@ dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
-# For output
+# For output (writing anotated videos)
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
-out = cv2.VideoWriter(f"{vidDir}/{dir}/annotated_output_{file}", fourcc, fps, displayRez)
-outCrop = cv2.VideoWriter(f"{vidDir}/{dir}/annotated_output_crop_{file}", fourcc, fps, displayRezsquare)
+fullFrameVidOut = cv2.VideoWriter(f"{output_dir}/annotated_output_{videoInputFile}", fourcc, fps, displayRez)
+croppedVidOut = cv2.VideoWriter(f"{output_dir}/annotated_output_crop_{videoInputFile}", fourcc, fps, displayRezsquare)
 
 #vibration properties
 vib = vibDataWindow(
-    dir_path=f"{vidDir}/{dir}",
+    dir_path=f"{output_dir}",
     #dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
     data_file=r"Jack_clockTest_interuptVPoll.hdf5",
-    trial_to_plot=0, #First trial is 0
+    trial_to_plot=1, #First trial is 0
     old_data=False,
     window=windowLen_s
 )
@@ -165,7 +167,6 @@ maintain_width_min = 0
 
 
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_dir = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData"  # Set your own output path
 
 #=== Setting up mediapipe
 ## Configurations:
@@ -703,9 +704,10 @@ pixel_incm = 6
 cropped_pixel_incm = 3
 
 
-# === Write to file
-csv_path = r"C:\Users\notyo\Documents\STARS\NSF_Floor_Vib_Camera-Labeling\NSF_Floor_Vib_Camera-Labeling\Jack\trialData\footstep_data_poll.csv"
-with open(csv_path, mode='w', newline='') as file:
+# === Write to file (header)
+csvOutputFile = os.path.splitext(videoInputFile)[0] + ".csv"
+csv_file = f"{output_dir}/{csvOutputFile}"
+with open(csv_file, mode='w', newline='') as file:
       writer = csv.writer(file)
       writer.writerow([
                 "Time", "Seconds_Mid",
@@ -863,8 +865,8 @@ while frame_Index < end_frame:
             #print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
             track_frames[i]["frame"] = resized_rawframe
             track_frames[i]["cropped_frame"] = resizedframe
-            out.write(resized_rawframe)  # Save the frame to video
-            outCrop.write(resizedframe)  # Save the frame to video
+            fullFrameVidOut.write(resized_rawframe)  # Save the frame to video
+            croppedVidOut.write(resizedframe)  # Save the frame to video
 
     else:
         resized_rawframe = track_frames[i]["frame"]
@@ -927,8 +929,7 @@ while frame_Index < end_frame:
     if waitKeyP != 0: frame_Index = frame_Index + 1 
         
                         
-    """
-    with open(csv_path, mode='a', newline='') as file:
+    with open(csvOutputFile, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([
         #frame_Index,
@@ -938,15 +939,8 @@ while frame_Index < end_frame:
         left_distToe,
         right_distToe
     ])
-            """
-
-    if clip_start <= frame_Index < clip_end:
-        if out_full is None:
-            out_full = cv2.VideoWriter(os.path.join(output_dir, "full_frame_clip.avi"), fourcc, fps, (width, height))
-
-        out_full.write(raw_frame)
 
 
-out.release()
-outCrop.release()
+fullFrameVidOut.release()
+croppedVidOut.release()
 cv2.destroyAllWindows()
