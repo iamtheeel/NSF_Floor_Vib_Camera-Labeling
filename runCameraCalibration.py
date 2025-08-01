@@ -1,9 +1,11 @@
 import importlib
-from library.CameraCalibrator import CameraCalibrator
+from library.camera_calibrator import CameraCalibrator
+from library.researcher_base import Researcher
 
 # load researcher settings found in settings directory
 RESEARCHER = "duy"
-cc = CameraCalibrator(RESEARCHER)
+researcher = Researcher(RESEARCHER)
+cc = CameraCalibrator(researcher)
 
 # select script to run
 RUN_CALIBRATION = False
@@ -32,7 +34,7 @@ if RUN_CALIBRATION:
 # undistort the video specified in RESEARCHER_settings.py
 # times are in seconds
 if RUN_DISTORTION_REMOVAL:
-    cc.remove_distortion(start_time=15, end_time=20)
+    cc.remove_distortion(start_time=10, end_time=15)
 
 # calculate perspective transform from CSV file
 # the CSV file should contain pixel coordinates and corresponding real-world coordinates
