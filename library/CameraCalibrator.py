@@ -103,23 +103,36 @@ class CameraCalibrator:
 
         print("Calibration parameters loaded.")
 
-    def pixel_to_meters(self, x_pixel, y_pixel):
+    def pixel_to_meters(self, x_pixel, y_pixel, perspective=False):
         """
         Converts a pixel location (x_pixel, y_pixel) to real-world coordinates (X, Y) in meters
         assuming the point lies on the Z=0 plane.
-        """
-        if self.homography is None:
-            self.load_calibration()
 
-        assert self.homography is not None, "Homography could not be loaded."
-        assert self.homography.shape == (3, 3), "Homography must be a 3x3 matrix."
+        If perspective=True, uses the perspective transform (from CSV correspondences).
+        Otherwise, uses the calibration-based inverse homography.
+        """
+        if perspective:
+            # Ensure perspective transform is available
+            if self.perspective_transform is None:
+                self.load_calibration()  # loads perspective_transform if saved
+            assert self.perspective_transform is not None, "Perspective transform not available."
+
+            transform = self.perspective_transform
+        else:
+            if self.homography is None:
+                self.load_calibration()
+            assert self.homography is not None, "Homography could not be loaded."
+            transform = self.homography
+
+        assert transform.shape == (3, 3), "Transform matrix must be 3x3."
 
         pixel_coords = np.array([float(x_pixel), float(y_pixel), 1.0])
-        world_coords = self.homography @ pixel_coords
-        world_coords /= world_coords[2]  # Normalize
+        world_coords = transform @ pixel_coords
+        world_coords /= world_coords[2]  # Normalize homogeneous coords
 
         x_meters, y_meters = world_coords[0], world_coords[1]
         return x_meters, y_meters
+
 
     def calculate_perspective_transform(self):
         """
