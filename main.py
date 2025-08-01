@@ -5,12 +5,13 @@
 # Label Vibration Data with walking pace from camera
 ####
 
-modelDir = r"C:\Users\smitt\STARS\\" #Kara
-#modelDir = "../media-pipeModels/"   #Josh
+#modelDir = r"C:\Users\smitt\STARS\\" #Kara
+modelDir = "../media-pipeModels/"   #Josh
 #modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
 
-vidDir = r"E:\STARS" #Kara
+#vidDir = r"E:\STARS" #Kara
 #vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
+vidDir = r"." #Josh
 
 ##
 # Pause = Space, 
@@ -89,10 +90,10 @@ Playback = True
 #file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
 
 #Jack's video file
-dir = r"StudentData\25_07_10\subject_2"
+#dir = r"StudentData\25_07_10\subject_2"
 #dir = r"StudentData\25_06_18\subject_2"
 #file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
-file = r"poll_run_7-10-2025_10-50-56 AM.asf"
+#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 #file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
 #file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
 #file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
@@ -105,7 +106,7 @@ file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 #file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
 
 #pollvintercept Jack runs
-dir = r"StudentData\25_07-10"
+dir = r"StudentData/25_07-10"
 file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
 #file = r"poll_run_7-10-2025_10-50-56 AM.asf"
 
@@ -114,7 +115,10 @@ file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
 fileName = f"{vidDir}/{dir}/{file}"
 print(f"Opening video: {fileName}")
 
+
 # ===== Global variables
+windowLen_s = 1 #5
+windowInc_s = 0.5 #1
 
 videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video object
 if not videoOpbject.isOpened():
@@ -131,17 +135,20 @@ dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
+# For output
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
+out = cv2.VideoWriter(f"{vidDir}/{dir}/annotated_output_{file}", fourcc, fps, displayRez)
+outCrop = cv2.VideoWriter(f"{vidDir}/{dir}/annotated_output_crop_{file}", fourcc, fps, displayRezsquare)
+
 #vibration properties
 vib = vibDataWindow(
-    dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
+    dir_path=f"{vidDir}/{dir}",
+    #dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
     data_file=r"Jack_clockTest_interuptVPoll.hdf5",
-    trial_to_plot=1,
+    trial_to_plot=0, #First trial is 0
     old_data=False,
-    window=5
+    window=windowLen_s
 )
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
-out = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output.mp4", fourcc, fps, displayRez)
-outCrop = cv2.VideoWriter(r"E:\STARS\StudentData\Exported_Video\annotated_output_crop.mp4", fourcc, fps, displayRezsquare)
 
 
 # Define video writers (90-frame clip, initialized when needed)
@@ -692,8 +699,6 @@ prevPixR_Toe = None
 prevPixL_Toe = None
 prevPixR_Heel = None
 prevPixL_Heel = None
-windowLen_s = 1 #5
-windowInc_s = 0.5 #1
 pixel_incm = 6
 cropped_pixel_incm = 3
 
@@ -743,7 +748,7 @@ while frame_Index < end_frame:
             exit()
         # === Saves seconds since midnight
         total_seconds = seconds_sinceMidnight(time_tracker, raw_frame) 
-        print(f"Total seconds: {total_seconds}")
+        #print(f"Total seconds: {total_seconds}")
         # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
         cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
@@ -807,7 +812,7 @@ while frame_Index < end_frame:
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
                         vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[1-1])
-                        vibImage_rgba2 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[2-1], colVar ='blue')
+                        vibImage_rgba2 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[2-1], colVar ='blue', debug=True)
                         vibImage_rgba3 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[3-1], colVar ='orange')
                         vibImage_rgba4 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[4-1], colVar ='darkgoldenrod')
                         vibImage_rgba5 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[5-1], colVar ='green')
@@ -920,12 +925,10 @@ while frame_Index < end_frame:
 
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
-out.release()
-outCrop.release()
-cv2.destroyAllWindows()
         
                         
-    """with open(csv_path, mode='a', newline='') as file:
+    """
+    with open(csv_path, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([
         #frame_Index,
@@ -943,3 +946,7 @@ cv2.destroyAllWindows()
 
         out_full.write(raw_frame)
 
+
+out.release()
+outCrop.release()
+cv2.destroyAllWindows()

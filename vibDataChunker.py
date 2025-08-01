@@ -90,7 +90,7 @@ class vibDataWindow:
     def time_to_seconds(self, t):
         return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6
 
-    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, chList, colVar = 'red', preTrigger=0.0):
+    def show_data_at_time(self, target_time_str, dataBlock, trigger_time, trial_num, dataCapRate, chList, colVar = 'red', preTrigger=0.0, debug=False):
         if isinstance(target_time_str, str):
             target_time_obj = datetime.strptime(target_time_str, "%H:%M:%S.%f").time()
         else:
@@ -99,13 +99,15 @@ class vibDataWindow:
         trigger_sec = self.time_to_seconds(trigger_time.time()) - preTrigger
         target_sec = target_time_obj
         time_offset_sec = target_sec - trigger_sec - self.window
+        if debug:
+            print(f"target sec: {target_sec}, trigger sec: {trigger_sec}, window: {self.window} | time offset: {time_offset_sec}")
 
         if time_offset_sec < 0:
             if time_offset_sec > -self.window:
                 self.window += time_offset_sec
                 time_offset_sec = 0
             else:
-                print(f"Requested time {target_time_str} is out of bounds.")
+                print(f"Requested time {target_time_str} is out of bounds. Is this the correct data run?")
                 return
 
         #print(f"Jumping to {time_offset_sec:.3f}s after trigger for trial {trial_num}")
@@ -161,8 +163,8 @@ class vibDataWindow:
                 dataCapRate=fs_hz,
                 preTrigger=preTrigger_s,
                 colVar = colVar,
-                chList=[ch]  # Pass only the current channel
-
+                chList=[ch],  # Pass only the current channel
+                debug=debug
             )
         
         # TODO: return as an object to be displayed
