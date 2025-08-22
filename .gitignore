@@ -9,3 +9,9 @@ __pycache__/
 # ignore vibration files
 *.hdf5
 
+# ignore Jupyter Notebooks
+*.ipynb
+
+# ignore image files
+*.png
+
