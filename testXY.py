@@ -44,11 +44,12 @@ def mouse_event(event, x_pix, y_pix, flags, param):
 
 ## The regex pattern to extract ground truth from filename
 # Regex to pull x and y in cm"108.3x500y" → (108.3, 500)
-pattern = re.compile(r"([0-9]+(?:\.[0-9]+)?)x([0-9]+)y", re.IGNORECASE)
+pattern = re.compile(r"([0-9]+(?:\.[0-9]+)?)x([0-9]+(?:\.[0-9]+)?)y", re.IGNORECASE)
 def parse_ground_truth(path):
     name = os.path.basename(path)
     m = pattern.search(name)
     if not m:
+        print(f"!!ERROR: No ground truth found in filename: {name}!!")
         return None, None
     x = float(m.group(1))
     y = float(m.group(2))
