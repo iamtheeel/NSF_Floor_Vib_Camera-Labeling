@@ -3,6 +3,7 @@
 #   Dr He Lab
 ###
 # Validate Duy's pixel to meter conversion
+# From a set of calibration images with known ground truth
 # Joshua Mehlman
 ####
 from library.camera_calibrator import CameraCalibrator  # Import the calibrator
