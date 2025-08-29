@@ -12,7 +12,7 @@ from library.researcher_base import Researcher          # Duy's config loader
 
 import csv
 
-researcher = Researcher("josh")
+researcher = Researcher("duy")
 # Init calibrator
 calibrator = CameraCalibrator(researcher)
 calibrator.load_calibration()
@@ -36,7 +36,7 @@ with open(csv_in, newline='') as input_csvfile, open(csv_out, 'w', newline='') a
         y_px = int(row["click_y (px)"])
 
         # Calculate meters from pixels
-        coords_cm  = calibrator.pixel_to_meters(x_pixel=x_px, y_pixel=y_px) # Get meters from pixels
+        coords_cm  = calibrator.mixed_pixel_to_meters(x_pixel=x_px, y_pixel=y_px) # Get meters from pixels
 
         # Update the row with calculated values
         row["calc_x (cm)"] = coords_cm[0] * 100  # Convert to cm

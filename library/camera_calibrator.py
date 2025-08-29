@@ -30,6 +30,10 @@ class CameraCalibrator:
         self.perspective_transform = None
         self.perspective_transform_undistorted = None
 
+        # edge lines
+        self.left_line = None
+        self.right_line = None
+
 
     def calibrate(self, CAMERA_SETTINGS):
         """
@@ -108,6 +112,7 @@ class CameraCalibrator:
             self.perspective_transform_undistorted = data.get('perspective_transform_undistorted', None)
 
         print("Calibration parameters loaded.")
+
 
 
     def pixel_to_meters(self, x_pixel, y_pixel, perspective=True):
@@ -413,56 +418,71 @@ class CameraCalibrator:
 
         return output
 
+    @staticmethod
+    def x_on_line_at_y(x1, y1, x2, y2, y_target):
+        if y2 == y1:
+            return None
+        m = (x2 - x1) / (y2 - y1)
+        return x1 + m * (y_target - y1)
 
+    def feet_from_left_wall(self, x, y, left_line, right_line, real_width_feet=8.8812336):
+        x_left = self.x_on_line_at_y(*left_line[0], *left_line[1], y)
+        x_right = self.x_on_line_at_y(*right_line[0], *right_line[1], y)
 
-    def piecewise_pixel_to_meters(self, x_pixel, y_pixel, threshold_y=500, transition_width=30):
+        if x_left is None or x_right is None or x_right == x_left:
+            return None  # invalid geometry
+
+        fraction = (x - x_left) / (x_right - x_left)
+        feet = fraction * real_width_feet
+        return feet
+
+    def mixed_pixel_to_meters(self, x_pixel, y_pixel):
         """
-        Converts pixel to real-world meters using a piecewise-smooth blend between
-        calibration-based and perspective-based transforms.
-
-        Uses:
-        - Perspective transform for pixels clearly above the threshold.
-        - Calibration transform for pixels clearly below the threshold.
-        - Linear interpolation in the transition band to avoid discontinuity.
+        Converts pixel coordinates to real-world meters:
+        - y_meters is computed using the perspective transform.
+        - x_meters is computed using distance from the left wall in feet, converted to meters.
 
         Args:
-            x_pixel, y_pixel: pixel coordinates in image
-            threshold_y: center pixel row for switching transforms (e.g., 500)
-            transition_width: half-width of the blend zone around threshold_y
+            x_pixel, y_pixel: pixel coordinates in the image
 
         Returns:
             (x_meters, y_meters): real-world coordinates in meters
         """
-        # Ensure both transforms are available
-        if self.homography is None or self.perspective_transform is None:
+        # Ensure required transforms and wall lines are ready
+        if self.perspective_transform is None:
             self.load_calibration()
 
-        assert self.homography is not None, "Homography not loaded."
-        assert self.perspective_transform is not None, "Perspective transform not loaded."
+        if self.left_line is None or self.right_line is None:
+            self.detect_hallway_edges_from_video()
 
-        # Prepare pixel coordinates (homogeneous)
+        assert self.perspective_transform is not None, "Perspective transform not loaded."
+        assert self.left_line is not None and self.right_line is not None, "Hallway lines not set."
+
+        # Prepare pixel coordinates for homogeneous transform
         pixel_coords = np.array([float(x_pixel), float(y_pixel), 1.0])
 
-        # Apply both transforms
+        # Compute y_meters from perspective transform
         world_p = self.perspective_transform @ pixel_coords
         world_p /= world_p[2]
-        x_p, y_p = world_p[0], world_p[1]
+        y_meters = world_p[1]
 
-        world_h = self.homography @ pixel_coords
-        world_h /= world_h[2]
-        x_h, y_h = world_h[0], world_h[1]
+        # Compute x_meters from feet-from-left-wall
+        feet = self.feet_from_left_wall(
+            x_pixel,
+            y_pixel,
+            self.left_line,
+            self.right_line
+        )
 
-        # Compute alpha for blending
-        if y_pixel <= threshold_y - transition_width:
-            return x_p, y_p
-        elif y_pixel >= threshold_y + transition_width:
-            return x_h, y_h
+        if feet is None:
+            x_meters = None  # or raise error / return np.nan
         else:
-            # Linear blend in the transition zone
-            alpha = (y_pixel - (threshold_y - transition_width)) / (2 * transition_width)
-            x = (1 - alpha) * x_p + alpha * x_h
-            y = (1 - alpha) * y_p + alpha * y_h
-            return x, y
+            x_meters = feet * 0.3048  # Convert feet to meters
+
+        return x_meters, y_meters
+
+
+
 
     def calculate_perspective_transform_undistorted(self):
         """
@@ -510,7 +530,116 @@ class CameraCalibrator:
         np.savez(self.param_file, **save_dict)
         print("Undistorted perspective transform calculated and saved.")
 
+    def detect_hallway_edges_from_video(self):
+        """
+        Loads the first undistorted frame from video and detects hallway edge lines,
+        updating self.left_line and self.right_line accordingly.
+        """
+        # Load first undistorted frame
+        frame = self.get_frame_at_time(0.0)
+        if frame is None:
+            print("Failed to extract frame from video.")
+            return
 
+        HEIGHT, WIDTH = frame.shape[:2]
+        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        blur = cv.GaussianBlur(gray, (5, 5), 0)
+        edges = cv.Canny(blur, 50, 150)
+
+        # Bounding box for search
+        LEFT = 800
+        RIGHT = 1900
+        TOP = 100
+        BOTTOM = 1000
+
+        # Trackers
+        left_tracker = 0
+        right_tracker = WIDTH
+        left_line = ((0, 0), (0, HEIGHT))
+        right_line = ((WIDTH, 0), (WIDTH, HEIGHT))
+
+        # Detect lines
+        lines = cv.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
+                                minLineLength=100, maxLineGap=10)
+
+        if lines is not None:
+            for line in lines:
+                x_1, y_1, x_2, y_2 = line[0]
+
+                # Ensure y1 is the top
+                if y_2 > y_1:
+                    x1, y1 = x_1, y_1
+                    x2, y2 = x_2, y_2
+                else:
+                    x1, y1 = x_2, y_2
+                    x2, y2 = x_1, y_1
+
+                # Bounding box check
+                if not (LEFT <= x1 <= RIGHT and LEFT <= x2 <= RIGHT and
+                        TOP <= y1 <= BOTTOM and TOP <= y2 <= BOTTOM):
+                    continue
+
+                if y2 != y1:
+                    m = (x2 - x1) / (y2 - y1)
+
+                    # Right wall (~ slope 0.6 - 0.8)
+                    if 0.6 < m < 0.8:
+                        x_top = int(x1 + m * (0 - y1))
+                        x_bottom = int(x1 + m * (HEIGHT - y1))
+                        if x_bottom < right_tracker:
+                            right_tracker = x_bottom
+                            right_line = ((x_top, 0), (x_bottom, HEIGHT))
+
+                    # Left wall (~ slope -0.4 to -0.2)
+                    elif -0.4 < m < -0.2:
+                        x_top = int(x1 + m * (0 - y1))
+                        x_bottom = int(x1 + m * (HEIGHT - y1))
+                        if x_bottom > left_tracker:
+                            left_tracker = x_bottom
+                            left_line = ((x_top, 0), (x_bottom, HEIGHT))
+
+        # Update class attributes
+        self.left_line = left_line
+        self.right_line = right_line
+        print(f"Detected left line: {self.left_line}")
+        print(f"Detected right line: {self.right_line}")
+
+
+    def get_frame_at_time(self, time_sec=0.0):
+        """
+        Extracts a single undistorted frame from the video at a given time (in seconds).
+
+        Returns:
+            frame (numpy array) or None
+        """
+        if self.camMatrix is None or self.distCoeff is None:
+            self.load_calibration()
+
+        vid = self.researcher.load_video()
+        if vid is None:
+            return None
+
+        meta = self.researcher.video_metadata
+        fps = meta["fps"]
+        width = meta["width"]
+        height = meta["height"]
+
+        target_frame = int(time_sec * fps)
+        vid.set(cv.CAP_PROP_POS_FRAMES, target_frame)
+
+        ret, frame = vid.read()
+        if not ret:
+            vid.release()
+            return None
+
+        # Undistort the frame
+        camMatrixNew, _ = cv.getOptimalNewCameraMatrix(
+            self.camMatrix, self.distCoeff, (width, height), 1, (width, height)
+        )
+        undistorted_frame = cv.undistort(frame, self.camMatrix, self.distCoeff, None, camMatrixNew)
+
+        vid.release()
+        return undistorted_frame
 
 
 
