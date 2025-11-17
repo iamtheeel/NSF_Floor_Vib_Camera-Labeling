@@ -3,8 +3,7 @@ MNIST
 Flowers102
 Jack/trialData
 filtered_points.csv
-StudentData/*/*/*/*.jpg
-StudentData/*/*/*/*/*.jpg
+StudentData/foo
 *.asf
 *.hdf5
 *.mp4
