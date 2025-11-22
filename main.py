@@ -12,19 +12,16 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import sys 
 import os
-from vibDataChunker import vibDataWindow
+from Scripts.vibDataChunker import vibDataWindow
 
 
 # Our stuff
-from velocity import calculate_avg_landMark_velocity 
-from cv2Utils import overlay_image
-from vibDataChunker import vibDataWindow
+from Scripts.velocity import calculate_avg_landMark_velocity 
+from Scripts.cv2Utils import overlay_image
 
-# === Fix import path to reach distance_position.py ===
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from distance_position import find_dist_from_y 
-
-from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
+from Scripts.distance_position import find_dist_from_y 
+from Scripts.OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
+from Scripts.vibDataChunker import vibDataWindow
 
 
 
