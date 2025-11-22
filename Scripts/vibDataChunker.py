@@ -50,7 +50,7 @@ class vibDataWindow:
         ]
 
     def load_parameters(self):
-        print('\n\nLoaded:',h5py.__file__,'\n\n')
+        
         with h5py.File(self.dirFile, 'r') as h5file:
             nTrials = h5file['experiment/data'][:].shape[0]
             filePerams = h5file['experiment/general_parameters'][:]

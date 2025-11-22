@@ -455,6 +455,7 @@ def put_text(text_array, frame):
     Returns:
     Nothing. The frames are mutable
     """
+
     text_arrayIndex = 0
     font = cv2.FONT_HERSHEY_DUPLEX
     scale = 0.7
@@ -474,6 +475,23 @@ def put_text(text_array, frame):
         text_arrayIndex = text_arrayIndex+1
         y = y + (text_height +20)
 
+def side_bar_text(frame, track_frames, pridictied_location):
+
+    text_array = [
+        f"Seconds: {track_frames['seconds_sinceMid']:.3f} s",
+        f"Left Heel: {track_frames['LeftHeel_Dist']:.2f} m",
+        f"Left Toe: {track_frames['LeftToe_Dist']:.2f} m",
+        f"Right Heel: {track_frames['RightHeel_Dist']:.2f} m",
+        f"Right Heel Location: X: {pridictied_location[0][0]/100:.2f}m Y: {pridictied_location[0][1]/100:.2f}",
+        f"Difference in Y Predictions: {abs(pridictied_location[0][1]/100 - track_frames['RightHeel_Dist']):.2f}m",
+        f"Right Toe: {track_frames['RightToe_Dist']:.2f} m",
+        'Previous Window:',
+        f"Toe Vel: {track_frames['toeVel']:.2f} m/s",
+        f"Heel Vel: {track_frames['heelVel']:.2f} m/s"
+        
+    ]
+    
+    put_text(text_array, frame)
 
 def grow_constantSize(landmarks, size_cm, frame_I, start_F, end_F, prev_px=None, alpha=0.1):
     y_pix_height = landmarks.y* height
@@ -523,6 +541,8 @@ def safe_divide(numerator, denominator):
 
 def overlay_image(frame, overlay, loc_x, loc_y, dim_x, dim_y):
     # convert to cv2
+    if overlay is None or not hasattr(overlay, "size") or overlay.size == 0:
+        return frame
     overlay = cv2.cvtColor(overlay, cv2.COLOR_RGBA2BGR) # Reorder the channels from RGBA to BGR
     overlay = cv2.resize(overlay, (dim_x, dim_y), interpolation=cv2.INTER_AREA) # Resize
 
@@ -530,3 +550,40 @@ def overlay_image(frame, overlay, loc_x, loc_y, dim_x, dim_y):
     frame[loc_y-h:loc_y, loc_x:loc_x+w] = overlay
 
     return frame
+
+def draw_box(frame, upper_left, bottom_right, color=(0, 255, 0), thickness=2):
+    """Draws a bounding box on the frame."""
+    cv2.rectangle(frame, upper_left, bottom_right, color, thickness)
+
+
+def draw_feet_points(frame, landmarks):
+    drawLandmark_circle(frame, landmarks[31], [230, 216, 173], 5)
+    drawLandmark_circle(frame, landmarks[29], [139, 0, 0], 5)
+    drawLandmark_circle(frame, landmarks[32], [102, 102, 255], 5)
+    drawLandmark_circle(frame, landmarks[30], [0, 0, 139], 5)
+
+def draw_vibration_overlay(frame, vibImage_rgba):
+
+    # location of the vibration overlays 
+    locations = [
+        (950, 7.59),
+        (1900, 10.26),
+        (1000, 12.32),
+        (1750, 13.99),
+        (1050, 17),
+        (1600, 23.32),
+        (1100, 26.82)
+    ]
+
+    for idx, (loc_x, dist) in enumerate(locations):
+        frame = overlay_image(
+            frame.copy(),
+            vibImage_rgba[idx],
+            loc_x=loc_x,
+            loc_y=int(findPixfromDist(dist)),
+            dim_x=200,
+            dim_y=200
+        )
+
+    return frame
+

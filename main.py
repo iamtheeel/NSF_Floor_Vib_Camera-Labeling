@@ -5,6 +5,8 @@ import pytesseract # pip install pytesseract
 import matplotlib as plt # matplotlib
 import numpy as np # numpy
 import csv
+import pandas as pd # pip install pandas
+
 
 # Media Pipe
 import mediapipe as mp  # pip install mediapipe
@@ -23,32 +25,45 @@ from Scripts.vibDataChunker import vibDataWindow
 from Scripts.video_io import VideoReader, VideoWriter, handle_keyboard
 from Scripts.mediapipe_wrapper import PoseDetector
 
-Runthrough = False 
-Playback = True 
+import Scripts.my_visualizations as myviz
+import Scripts.camera_calibration as setcal
+import Scripts.predictions as pred
 
-FPS = 30  # Frames per second
+
 
 modelDir = "Models"   
 
-vidDir = r"." 
+dir = r"./StudentData" 
 
-
-dir = r"/StudentData"  
-
-
-
-videoInputFile = r"/video_hallwayTests/poll_run_7-10-2025_10-50-56 AM.asf" # Vib data run 1, stomp lines up with 1 sec first window
+video_dir = r"./StudentData/video_hallwayTests"
+video_name = "poll_run_7-10-2025_10-50-56 AM.asf"
+videoInputFile = f"/video_hallwayTests/{video_name}" 
 
 vibration_data_file = r"/vibration_test_data/Jack_clockTest_interuptVPoll.hdf5"
 
+image_dir = './StudentData/calibration_images'
+#setcal.find_checkerboard_corners_all_images(image_dir).to_csv(csv_calibration_file, index=False)
+df = pd.read_csv('./StudentData/csv_files/all_checkerboard_points.csv')
 
-output_dir = f"{vidDir}/{dir}"  # Set your own output path
+H = setcal.compute_homography_from_dataframe( df )
+p = pred.predict_points_on_image( [1000,1000], H )
+
+print('Predicted point at (1000,1000): ', p)
+
+output_dir = f"{dir}"  # Set your own output path
 fileName = f"{output_dir}/{videoInputFile}"
 print(f"Opening video: {fileName}")
 
 
 model_path = f"{modelDir}/pose_landmarker_heavy.task" # 29.2 MiB
 pose_detector = PoseDetector(model_path)
+
+
+# ===== Playback settings
+Runthrough = False 
+Playback = True 
+
+FPS = 30  
 
 # ===== Global variables
 windowLen_s = 1 #5
@@ -72,10 +87,11 @@ displayRezsquare = (int(height/dispFact), int(height/dispFact))
 
 # For output (writing anotated videos)
 
-fullFrameVidOut = VideoWriter(f"{output_dir}/annotated_output_{videoInputFile}", 
+
+fullFrameVidOut = VideoWriter(f"{video_dir}/annotated_output_{video_name}", 
                               FPS, resolution=displayRez)
 
-croppedVidOut = VideoWriter(f"{output_dir}/annotated_output_crop_{videoInputFile}", 
+croppedVidOut = VideoWriter(f"{video_dir}/annotated_output_crop_{video_name}", 
                             FPS, resolution=displayRezsquare)
 
 
@@ -106,7 +122,6 @@ maintain_width_min = 0
 
 
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-
 
 # === Set time to start/end
 start_time = 0
@@ -139,21 +154,13 @@ prevPixL_Heel = None
 pixel_incm = 6
 cropped_pixel_incm = 3
 
-
 # === Write to file (header)
 csvOutputFile = os.path.splitext(videoInputFile)[0] + ".csv"
 csv_file = f"{output_dir}/{csvOutputFile}"
-
-print(f"\nCreating CSV file at: {csv_file}\n")
-
-with open(csv_file, mode='w', newline='') as file:
-      writer = csv.writer(file)
-      writer.writerow([
-                "Time", "Seconds_Mid",
-        "LeftHeel_Dist", "RightHeel_Dist" , 
-        "LeftToe_Dist" , "RightToe_Dist",
-    ]) 
-
+csv_rows = [[
+        "Time", "LeftHeel_Dist", "RightHeel_Dist",
+        "LeftToe_Dist", "RightToe_Dist"
+    ]]
 
 
 # === Sets the video to specified index
@@ -166,11 +173,11 @@ video.set_frame(frame_Index)
 toeVel_mps = 0
 framewith_data = 0
 
-vibImage_rgba = None
+vibration_colors = ['red', 'blue', 'orange', 'darkgoldenrod', 'green', 'purple', 'olive']
+vibImage_rgba = [None for _ in range(7)]
+
 windowName = "Main Frame:"
 cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
-
-
 
 raw_frame = video.read()
 if raw_frame is None:
@@ -199,22 +206,19 @@ while frame_Index < end_frame:
             print("Failed to read frame")
             break
 
-
-      
         total_seconds = seconds_sinceMidnight(raw_frame, frame_Index, time_tracker) 
-
 
         # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
-        cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
+        
+        draw_box(raw_frame, (min_width, max_height), (max_width, min_height))
+        
         # ===Is there a cropped frame to send to model?
         if newDim_Frame is not None: 
             good = False
-        # === Returns landmarks based on person
-
+            # === Returns landmarks based on person
             good, result, adjusted_time_ms = pose_detector.detect(newDim_Frame, frame_Index, frameTime_ms)
 
-        # === 
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
                 constPixL_Toe, crop_prevPixL_Toe = constantSize(landmarks[31],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixL_Toe)
@@ -226,17 +230,26 @@ while frame_Index < end_frame:
                 constPixR_Toe, crop_prevPixR_Toe = constantSize(landmarks[30],cropped_pixel_incm, frame_Index, start_frame, end_frame, crop_prevPixR_Heel)
                 drawLandmark_circle(newDim_Frame, landmarks[30], [0, 0, 139],constPixR_Toe) #right heel is dark red
 
+                
+                
+
                 landmarks_of_fullscreen(landmarks, min_width, max_width, min_height, max_height) 
                 #=== Draws landmarks and expands them according to pixel size
                 
                 constPixL_Toe, prevPixL_Toe = constantSize(landmarks[31],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Toe)
-                drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173],constPixL_Toe) #left toe is light blue
+                drawLandmark_circle(raw_frame, landmarks[31], [230, 216, 173], constPixL_Toe) #left toe is light blue
                 constPixL_Heel, prevPixL_Heel = constantSize(landmarks[29],pixel_incm, frame_Index, start_frame, end_frame, prevPixL_Heel)
                 drawLandmark_circle(raw_frame, landmarks[29], [139, 0, 0],constPixL_Heel) # left heel is dark blue
                 constPixR_Heel, prevPixR_Heel = constantSize(landmarks[32],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[32], [102, 102, 255],constPixR_Heel) # right toe is light red 
                 constPixR_Toe, prevPixR_Toe = constantSize(landmarks[30],pixel_incm, frame_Index, start_frame, end_frame, prevPixR_Heel)
                 drawLandmark_circle(raw_frame, landmarks[30], [0, 0, 139],constPixR_Heel) #right heel is dark red 
+
+                frame_height, frame_width = raw_frame.shape[:2]
+                center = int(landmarks[30].x*frame_width), int(landmarks[30].y*frame_height)
+                print('Predicting on:',center)
+                pridictied_location = pred.predict_points_on_image( center, H )
+
                 # === Get new frame dimensions           
                 min_width, max_width, min_height, max_height, maintain_dim  = crop_to_square(raw_frame, landmarks, direction ,maintain_dim) 
                 smoothed_dim, min_width, max_width, min_height, max_height  = smooth_crop_dim(smoothed_dim, min_width, max_width, min_height, max_height) 
@@ -267,42 +280,24 @@ while frame_Index < end_frame:
 
                         # TODO:Jack Get vibration data
 
+
                         # send time  seconds since midnight and location of walker
                         # returns:  img_rgba = np.asarray(canvas.buffer_rgba())
-                        vibImage_rgba = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[1-1])
-                        vibImage_rgba2 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[2-1], colVar ='blue', debug=True)
-                        vibImage_rgba3 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[3-1], colVar ='orange')
-                        vibImage_rgba4 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[4-1], colVar ='darkgoldenrod')
-                        vibImage_rgba5 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[5-1], colVar ='green')
-                        vibImage_rgba6 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[6-1], colVar ='purple')
-                        vibImage_rgba7 = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[7-1], colVar ='olive')
 
-                        
-
+                        # Get vibration images for all channels
+                        for idx in range(7):
+                            vibImage_rgba[idx] = vib.vib_get(time=total_seconds, distanceFromCam=50, chToPlot=[idx], colVar=vibration_colors[idx])
+    
 
                 if vibImage_rgba is not None:
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba, loc_x=950, loc_y=int(findPixfromDist(7.59)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba2, loc_x=1900, loc_y=int(findPixfromDist(10.26)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba3, loc_x=1000, loc_y=int(findPixfromDist(12.32)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba4, loc_x=1750, loc_y=int(findPixfromDist(13.99)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba5, loc_x=1050, loc_y=int(findPixfromDist(17)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba6, loc_x=1600, loc_y=int(findPixfromDist(23.32)), dim_x=200, dim_y=200) # overlay at this position
-                    raw_frame = overlay_image(raw_frame.copy(), vibImage_rgba7, loc_x=1100, loc_y=int(findPixfromDist(26.82)), dim_x=200, dim_y=200) # overlay at this position
+                    raw_frame = draw_vibration_overlay(raw_frame, vibImage_rgba)
                     
+                raw_frame = myviz.draw_real_world_grid_on_image(raw_frame, H)
 
                 track_frames[i]["toeVel"] = toeVel_mps
                 track_frames[i]["heelVel"] = toeVel_mps
 
-                text = [
-                    f"Seconds: {track_frames[i]['seconds_sinceMid']:.3f} s",
-                    f"Left Heel: {track_frames[i]['LeftHeel_Dist']:.2f} m", 
-                    f"Left Toe: {track_frames[i]['LeftToe_Dist']:.2f} m", 
-                    f"Right Heel: {track_frames[i]['RightHeel_Dist']:.2f} m",
-                    f"Right Toe: {track_frames[i]['RightToe_Dist']:.2f} m",
-                    'Previous Window: ',
-                    f"Toe Vel: {track_frames[i]['toeVel']:.2f} m/s",
-                    f"Heel Vel: {track_frames[i]['heelVel']:.2f} m/s",
-                    ]
+          
                 framewith_data +=1
 
                 # TODO: Add vibration data to frame
@@ -313,11 +308,16 @@ while frame_Index < end_frame:
                     min_width, max_width, min_height, max_height, direction = crop_to_Southhall() #, landmarks
                 else:
                     min_width, max_width, min_height, max_height, direction = crop_to_Northhall() #, landmarks
+
             resized_rawframe = cv2.resize(raw_frame, displayRez)
             resizedframe = cv2.resize(newDim_Frame, displayRezsquare)
             # ===resize for viewing and save in array
-            put_text(text,  resizedframe)
-            put_text(text, resized_rawframe)
+
+            
+
+            side_bar_text(resizedframe, track_frames[i], pridictied_location)
+            side_bar_text(resized_rawframe, track_frames[i], pridictied_location)
+
             #print(f"shape | raw_frame {raw_frame.shape}, resized_rawframe {resized_rawframe.shape}")
             track_frames[i]["frame"] = resized_rawframe
             track_frames[i]["cropped_frame"] = resizedframe
@@ -331,27 +331,26 @@ while frame_Index < end_frame:
     cv2.imshow("Zoomed Frame: ", resizedframe)
     cv2.imshow("Frame", resized_rawframe)
 
-
-
     new_index = handle_keyboard(frame_Index, start_frame, FPS)
+
+    csv_rows.append([
+        total_seconds,
+        left_distHeel,
+        right_distHeel,
+        left_distToe,
+        right_distToe
+    ]) 
 
     if new_index is None:
         print("Quitting.")
         break
 
     frame_Index = new_index
-    
 
-    with open(csv_file, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([
-        #frame_Index,
-        total_seconds,  # Convert to seconds
-        left_distHeel,
-        right_distHeel,
-        left_distToe,
-        right_distToe
-    ])
+    
+with open(csv_file, mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerows(csv_rows)
 
 fullFrameVidOut.close()
 croppedVidOut.close()

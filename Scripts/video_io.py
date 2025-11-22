@@ -32,8 +32,10 @@ class VideoWriter:
     def __init__(self, output_path, fps, resolution=(640,480)):
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.writer = cv2.VideoWriter(output_path, fourcc, fps, resolution)
+        self.output_path = output_path
 
     def write(self, frame):
+        
         self.writer.write(frame)
 
     def close(self):
