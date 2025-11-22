@@ -8,4 +8,10 @@ StudentData
 *.hdf5
 *.mp4
 *.pyc
+*.csv
+*.task
+
 __pycache__
+
+\venv
+

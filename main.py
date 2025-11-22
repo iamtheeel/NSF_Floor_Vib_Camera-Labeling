@@ -1,28 +1,3 @@
-####
-#   STARS Summer 2025
-#   Dr J Lab
-###
-# Label Vibration Data with walking pace from camera
-####
-
-#modelDir = r"C:\Users\smitt\STARS\\" #Kara
-modelDir = "../media-pipeModels/"   #Josh
-#modelDir = r"C:\Users\notyo\Documents\STARS\mediapipe\\" #Jack
-
-#vidDir = r"E:\STARS" #Kara
-#vidDir = r"C:\Users\notyo\Documents\STARS" #Jack
-vidDir = r"." #Josh
-
-##
-# Pause = Space, 
-# Forward = g
-#Backwards = d
-#Backwards by 1 second = s
-
-## Imports
-#Built ins
-#import time
-#import datetime
 
 #Third party
 import cv2 # opencv-python
@@ -38,7 +13,7 @@ from mediapipe.tasks.python import vision
 import sys 
 import os
 from vibDataChunker import vibDataWindow
-#import keyboard
+
 
 # Our stuff
 from velocity import calculate_avg_landMark_velocity 
@@ -46,74 +21,30 @@ from cv2Utils import overlay_image
 from vibDataChunker import vibDataWindow
 
 # === Fix import path to reach distance_position.py ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from distance_position import find_dist_from_y  # ✅ Import your custom function
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from distance_position import find_dist_from_y 
 
 from OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
+
+
 
 Runthrough = False 
 Playback = True 
 
-#North_South Runs
-#Kara's video file
-#dir = r"StudentData\25_06_18\subject_1"
-#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
-#Yoko's video file
-#dir = r"StudentData\25_06_18\subject_3"
-#file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-#Jack's video file
-#dir = r"StudentData\25_06_18\subject_2"
-#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
-#Bad Run:
-#dir = r"StudentData\25_06_18\subject_2"
-#file = r"sub_2_run_1_6-18-2025_11-36-03 AM.asf"
 
-#South_North Runs
-#Kara's video file
-#dir = r"StudentData\25_06_18\subject_1"
-#file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
-#Yoko's video file
-#dir = r"StudentData\25_06_18\subject_3"
-#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
-#Jack's video file
-#dir = r"StudentData\25_06_18\subject_2"
-#file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
-#Bad Run:
-#dir = r"StudentData\25_06_18\subject_1"
-#file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
+modelDir = "Models"   
 
-#Kara's video file
-#dir = r"StudentData\25_06_18\subject_1"
-#file = r"Sub_1_Run_1_6-18-2025_11-45-46 AM.asf"
-#file = r"Sub_1_Run_2__6-18-2025_11-47-57 AM.asf"
-#file = r"Sub_1_Run_3__6-18-2025_11-49-29 AM.asf"
+vidDir = r"." 
 
-#Jack's video file
-#dir = r"StudentData\25_07_10\subject_2"
-#dir = r"StudentData\25_06_18\subject_2"
-#file = r"intercept_run_7-10-2025_10-45-46 AM.asf"
-#file = r"poll_run_7-10-2025_10-50-56 AM.asf"
-#file = r"sub_2_run_3_pt_1_6-18-2025_11-40-17 AM.asf"
-#file = r"sub_2_run_4_6-18-2025_11-41-35 AM.asf"
-#file = r"sub_2_run_5_6-18-2025_11-42-48 AM.asf"
 
-#Yoko's video file
-#dir = r"StudentData\25_06_18\subject_3"
-#file = r"sub_3_run_4_F_6-18-2025_11-26-08 AM.asf"
-#file = r"sub3_run5_6-18-2025_11-28-28 AM.asf"
-#file = r"Sub3_run6_6-18-2025_11-32-05 AM.asf"
-#file = r"Sub3_run7_6-18-2025_11-34-22 AM.asf"
+dir = r"/StudentData"  
 
-#pollvintercept Jack runs
-#dir = r"StudentData/25_06-18"
-dir = r"StudentData/25_07-10"
-#file = "intercept_run_7-10-2025_10-45-46 AM.asf" # Vib data run 0
-#videoInputFile = "intercept_run_7-10-2025_10-45-46 AM.asf" # Vib data run 0
-videoInputFile = "poll_run_7-10-2025_10-50-56 AM.asf" # Vib data run 1, stomp lines up with 1 sec first window
 
-#dir = r"E:\STARS\07_10_2025_Vid_Data"
-#file = "intercept_run_7-10-2025_10-45-46 AM.asf"
+
+videoInputFile = r"/video_hallwayTests/poll_run_7-10-2025_10-50-56 AM.asf" # Vib data run 1, stomp lines up with 1 sec first window
+
+vibration_data_file = r"/vibration_test_data/Jack_clockTest_interuptVPoll.hdf5"
+
 
 output_dir = f"{vidDir}/{dir}"  # Set your own output path
 fileName = f"{output_dir}/{videoInputFile}"
@@ -128,6 +59,8 @@ videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video 
 if not videoOpbject.isOpened():
     print("Error: Could not open video.")
     exit()
+
+
 # Video properties    
 fps = 30 # Frames per second
 fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
@@ -148,11 +81,14 @@ croppedVidOut = cv2.VideoWriter(f"{output_dir}/annotated_output_crop_{videoInput
 vib = vibDataWindow(
     dir_path=f"{output_dir}",
     #dir_path=r"E:\STARS\StudentData\25_07_10\subject_2",
-    data_file=r"Jack_clockTest_interuptVPoll.hdf5",
+    #data_file=r"Jack_clockTest_interuptVPoll.hdf5",
+    data_file= vibration_data_file,
     trial_to_plot=1, #First trial is 0
     old_data=False,
     window=windowLen_s
 )
+
+print(f'\n\nVibration data loaded: {vib.dataFile}\n\n')
 
 
 # Define video writers (90-frame clip, initialized when needed)
@@ -171,16 +107,9 @@ maintain_width_min = 0
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 
 #=== Setting up mediapipe
-## Configurations:
-# Media pipe model: 
-#Pose detector: 224 x 224 x 3
-#Pose landmarker: 256 x 256 x 3 
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_lite.task" # 5.5 MiB
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_full.task" # 9.0 MiB
-#model_path = r"C:\Users\smitt\STARS\pose_landmarker_heavy.task" # 29.2 MiB
 
 #model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
-model_path = f"{modelDir}pose_landmarker_heavy.task" # 29.2 MiB
+model_path = f"{modelDir}/pose_landmarker_heavy.task" # 29.2 MiB
 ### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -709,6 +638,9 @@ cropped_pixel_incm = 3
 # === Write to file (header)
 csvOutputFile = os.path.splitext(videoInputFile)[0] + ".csv"
 csv_file = f"{output_dir}/{csvOutputFile}"
+
+print(f"\nCreating CSV file at: {csv_file}\n")
+
 with open(csv_file, mode='w', newline='') as file:
       writer = csv.writer(file)
       writer.writerow([
@@ -719,7 +651,7 @@ with open(csv_file, mode='w', newline='') as file:
 
 
 # === Prompt for user
-print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
+#print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
 
 # === Sets the video to specified index
 frame_Index = start_frame
@@ -741,7 +673,12 @@ print(f"Initial seconds: {initial_seconds}")
 
 videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 
+
+print(f'\nProcessing frames {start_frame} to {end_frame}...\n')
+left_distHeel = right_distHeel = left_distToe = right_distToe = 0
+
 while frame_Index < end_frame:
+    
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
@@ -795,6 +732,7 @@ while frame_Index < end_frame:
                 left_distToe = find_dist_from_y(track_frames[i]["landmarks"][31].y*height)
                 right_distToe = find_dist_from_y(track_frames[i]["landmarks"][32].y*height)
 
+                
                 track_frames[i]["LeftToe_Dist"] = left_distToe # Store the left toe distance in the track_frames list
                 track_frames[i]["RightToe_Dist"] = right_distToe # Store the left toe distance in the track_frames list
                 track_frames[i]["RightHeel_Dist"] = right_distHeel
@@ -840,14 +778,14 @@ while frame_Index < end_frame:
                 track_frames[i]["heelVel"] = toeVel_mps
 
                 text = [
-                    f"Seconds: {track_frames[i]["seconds_sinceMid"]:.3f} s",
-                    f"Left Heel: {track_frames[i]["LeftHeel_Dist"]:.2f} m", 
-                    f"Left Toe: {track_frames[i]["LeftToe_Dist"]:.2f} m", 
-                    f"Right Heel: {track_frames[i]["RightHeel_Dist"]:.2f} m",
-                    f"Right Toe: {track_frames[i]["RightToe_Dist"]:.2f} m",
-                    "Previous Window: ",
-                    f"Toe Vel: {track_frames[i]["toeVel"]:.2f} m/s",
-                    f"Heel Vel: {track_frames[i]["heelVel"]:.2f} m/s",
+                    f"Seconds: {track_frames[i]['seconds_sinceMid']:.3f} s",
+                    f"Left Heel: {track_frames[i]['LeftHeel_Dist']:.2f} m", 
+                    f"Left Toe: {track_frames[i]['LeftToe_Dist']:.2f} m", 
+                    f"Right Heel: {track_frames[i]['RightHeel_Dist']:.2f} m",
+                    f"Right Toe: {track_frames[i]['RightToe_Dist']:.2f} m",
+                    'Previous Window: ',
+                    f"Toe Vel: {track_frames[i]['toeVel']:.2f} m/s",
+                    f"Heel Vel: {track_frames[i]['heelVel']:.2f} m/s",
                     ]
                 framewith_data +=1
 
@@ -929,9 +867,11 @@ while frame_Index < end_frame:
 
     # If we are not paulsed go to the next frame
     if waitKeyP != 0: frame_Index = frame_Index + 1 
-        
-                        
-    with open(csvOutputFile, mode='a', newline='') as file:
+    
+
+    #print(f'Outputting data to CSV {csvOutputFile}')
+
+    with open(csv_file, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([
         #frame_Index,
