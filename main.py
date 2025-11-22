@@ -21,9 +21,7 @@ from Scripts.OCR_Detect import timeWith_ms # Import the timeWith_ms class from O
 from Scripts.vibDataChunker import vibDataWindow
 
 from Scripts.video_io import VideoReader, VideoWriter, handle_keyboard
-from Scripts.draw_utils import drawLandmark_circle, put_text, overlay_image
-
-
+from Scripts.mediapipe_wrapper import PoseDetector
 
 Runthrough = False 
 Playback = True 
@@ -48,6 +46,9 @@ output_dir = f"{vidDir}/{dir}"  # Set your own output path
 fileName = f"{output_dir}/{videoInputFile}"
 print(f"Opening video: {fileName}")
 
+
+model_path = f"{modelDir}/pose_landmarker_heavy.task" # 29.2 MiB
+pose_detector = PoseDetector(model_path)
 
 # ===== Global variables
 windowLen_s = 1 #5
@@ -105,28 +106,6 @@ maintain_width_min = 0
 
 
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-
-#=== Setting up mediapipe
-
-#model_path = r"../media-pipeModels/pose_landmarker_lite.task" # 5.5 MiB
-model_path = f"{modelDir}/pose_landmarker_heavy.task" # 29.2 MiB
-### From https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python#video ###
-BaseOptions = mp.tasks.BaseOptions
-PoseLandmarker = mp.tasks.vision.PoseLandmarker
-PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
-VisionRunningMode = mp.tasks.vision.RunningMode
-# Create a pose landmarker instance with the video mode:
-options = PoseLandmarkerOptions(
-                                base_options=BaseOptions(model_asset_path=model_path,
-                                                         delegate=BaseOptions.Delegate.CPU # Default is GPU, and I anin't got none
-                                                         ),
-                                #running_mode=VisionRunningMode.VIDEO,
-                                running_mode=VisionRunningMode.VIDEO,
-                                output_segmentation_masks=True
-                               )
-
-landmarkerVideo = PoseLandmarker.create_from_options(options)
-
 
 
 # === Set time to start/end
@@ -232,7 +211,9 @@ while frame_Index < end_frame:
         if newDim_Frame is not None: 
             good = False
         # === Returns landmarks based on person
-            good, result, adjusted_time_ms = isPersonInFrame(newDim_Frame, frame_Index, frameTime_ms, landmarkerVideo)
+
+            good, result, adjusted_time_ms = pose_detector.detect(newDim_Frame, frame_Index, frameTime_ms)
+
         # === 
             if good and result is not None:
                 landmarks = result.pose_landmarks[0]
