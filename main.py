@@ -20,12 +20,15 @@ from Scripts.distance_position import find_dist_from_y
 from Scripts.OCR_Detect import timeWith_ms # Import the timeWith_ms class from OCR_Detect.py
 from Scripts.vibDataChunker import vibDataWindow
 
+from Scripts.video_io import VideoReader, VideoWriter, handle_keyboard
+from Scripts.draw_utils import drawLandmark_circle, put_text, overlay_image
 
 
 
 Runthrough = False 
 Playback = True 
 
+FPS = 30  # Frames per second
 
 modelDir = "Models"   
 
@@ -50,27 +53,30 @@ print(f"Opening video: {fileName}")
 windowLen_s = 1 #5
 windowInc_s = 0.5 #1
 
-videoOpbject = cv2.VideoCapture(fileName) #open the video file and make a video object
-if not videoOpbject.isOpened():
-    print("Error: Could not open video.")
-    exit()
+
+video = VideoReader(fileName)
 
 
-# Video properties    
-fps = 30 # Frames per second
-fCount = videoOpbject.get(cv2.CAP_PROP_FRAME_COUNT) #Frame count
-width = int(videoOpbject.get(cv2.CAP_PROP_FRAME_WIDTH)) # Width of the video frame
-height = int(videoOpbject.get(cv2.CAP_PROP_FRAME_HEIGHT)) # Height of the video frame
-frameTime_ms = 1000/fps #How long of a time does each frame cover
+fCount = video.total_frames
+width = video.width
+height = video.height
+
+
+frameTime_ms = 1000/FPS #How long of a time does each frame cover
+
 # Fit to the display
 dispFact = 2
 displayRez = (int(width/dispFact), int(height/dispFact))
 displayRezsquare = (int(height/dispFact), int(height/dispFact)) 
 
 # For output (writing anotated videos)
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
-fullFrameVidOut = cv2.VideoWriter(f"{output_dir}/annotated_output_{videoInputFile}", fourcc, fps, displayRez)
-croppedVidOut = cv2.VideoWriter(f"{output_dir}/annotated_output_crop_{videoInputFile}", fourcc, fps, displayRezsquare)
+
+fullFrameVidOut = VideoWriter(f"{output_dir}/annotated_output_{videoInputFile}", 
+                              FPS, resolution=displayRez)
+
+croppedVidOut = VideoWriter(f"{output_dir}/annotated_output_crop_{videoInputFile}", 
+                            FPS, resolution=displayRezsquare)
+
 
 #vibration properties
 vib = vibDataWindow(
@@ -123,13 +129,12 @@ landmarkerVideo = PoseLandmarker.create_from_options(options)
 
 
 
-
 # === Set time to start/end
 start_time = 0
 
-start_frame = int(start_time * fps) # Start frame for the clip
+start_frame = int(start_time * FPS) # Start frame for the clip
 end_time = 30 # End time for the clip in seconds
-end_frame = fps*end_time #int(fCount)
+end_frame = FPS*end_time #int(fCount)
 # === saves dimensions for first crop
 max_height = height
 min_height = 0
@@ -171,15 +176,14 @@ with open(csv_file, mode='w', newline='') as file:
     ]) 
 
 
-# === Prompt for user
-#print(f"Press f to pause the video then you will be able to use other keys to navigate through the video frames. Press q to quit.")
 
 # === Sets the video to specified index
 frame_Index = start_frame
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
+
+video.set_frame(frame_Index)
 
 # === Begin process of cropping, saving, and playback
-waitKeyP = 1
+
 toeVel_mps = 0
 framewith_data = 0
 
@@ -187,13 +191,19 @@ vibImage_rgba = None
 windowName = "Main Frame:"
 cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
 
-success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
-initial_seconds = seconds_sinceMidnight( raw_frame, frame_Index)
+
+
+raw_frame = video.read()
+if raw_frame is None:
+    print("Failed to read frame")
+    exit()
+
+initial_seconds = seconds_sinceMidnight( raw_frame, frame_Index, time_tracker)
 
 print(f"Initial seconds: {initial_seconds}")
 
-videoOpbject.set(cv2.CAP_PROP_POS_FRAMES, frame_Index)
 
+video.set_frame(frame_Index)
 
 print(f'\nProcessing frames {start_frame} to {end_frame}...\n')
 left_distHeel = right_distHeel = left_distToe = right_distToe = 0
@@ -203,14 +213,18 @@ while frame_Index < end_frame:
     i = frame_Index - start_frame #index for track_frames array
     # === Reads and loads new frames in array
     if track_frames[i]['frame'] is None: 
-        #print(f"frame_Index: {frame_Index}, i: {i}")
-        success, raw_frame = videoOpbject.read() # Returns a boolean and the next frame
-        if not success: # If the frame was not read successfully, break the loop
+        
+        #success, raw_frame = videoOpbject.read()
+        raw_frame = video.read()
+        if raw_frame is None:
             print("Failed to read frame")
-            exit()
-        # === Saves seconds since midnight
-        total_seconds = seconds_sinceMidnight(raw_frame, frame_Index) 
-        #print(f"Total seconds: {total_seconds}")
+            break
+
+
+      
+        total_seconds = seconds_sinceMidnight(raw_frame, frame_Index, time_tracker) 
+
+
         # === Crops full frame. Draws the cropped area on full frame
         newDim_Frame = raw_frame[min_height:max_height,min_width:max_width,:].copy() #crops frame
         cv2.rectangle(raw_frame, (min_width,max_height), (max_width, min_height), [255,0,0], 5)
@@ -259,16 +273,16 @@ while frame_Index < end_frame:
                 track_frames[i]["RightHeel_Dist"] = right_distHeel
                 track_frames[i]["LeftHeel_Dist"] = left_distHeel 
                 
-                track_frames[i]["seconds_sinceMid"] = safe_divide(i, fps)
+                track_frames[i]["seconds_sinceMid"] = safe_divide(i, FPS)
                 # Calculate the walking speed 
                 # Every n seconds (how many frames is that)
-                if framewith_data >= (windowLen_s+1)*fps:    # don't run if we don't have a windows worth of data
+                if framewith_data >= (windowLen_s+1)*FPS:    # don't run if we don't have a windows worth of data
                                                 # Also, skip the times that don't have rollovers
-                    if framewith_data % (windowInc_s*fps) == 0: # run every overlap
-                        #print(f"Calculate ms at frame: {i}, fps:{fps}, inc: {windowInc_s} sec")
+                    if framewith_data % (windowInc_s*FPS) == 0: # run every overlap
+                        #print(f"Calculate ms at frame: {i}, FPS:{FPS}, inc: {windowInc_s} sec")
                         #print(f"distance: {track_frames[i]["LeftToe_Dist"]}, landmark: {track_frames[i]["landmarks"][29].y}")
-                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
-                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*fps, verbose=False)
+                        heelVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftHeel_Dist", right="RightHeel_Dist", curentFrame=i, nPoints= windowLen_s*FPS, verbose=False)
+                        toeVel_mps = calculate_avg_landMark_velocity(track_frames, left="LeftToe_Dist", right="RightToe_Dist", curentFrame=i, nPoints= windowLen_s*FPS, verbose=False)
 
                         # TODO:Jack Get vibration data
 
@@ -335,62 +349,17 @@ while frame_Index < end_frame:
 
     cv2.imshow("Zoomed Frame: ", resizedframe)
     cv2.imshow("Frame", resized_rawframe)
-    #cv2.resizeWindow(windowName, 1433, 756) #TODO: use from vars
 
-    # Navigation
-    key1 = cv2.waitKey(waitKeyP) #& 0xFF  
-    #key1 = get_key(waitKeyP)
-    #print(f"key: {key1}")
 
-    if key1 == 32: #Space to pause
-        if waitKeyP == 1:
-            waitKeyP = 0
-            print("Pausing") 
-        else:
-            frame_Index -= 1 # when we unpause we will increment, but that will skip on
-            waitKeyP = 1
-            print("Resuming") 
-            frame_Index = frame_Index + 1
-    elif key1 == 81 or key1 ==2 or key1 == ord('d'): #Left Arrow:  # Back one Frame
-        waitKeyP = 0 # If we key we want to pause
-        frame_Index -= 1
-        if frame_Index < start_frame:
-            print("Cannot go further back, press space to continue")
-            frame_Index = start_frame
-    elif key1 == 84 or key1 == 1 or key1 == ord('s'):  # Down Arrow Back one Second
-        #print(f"back one second: {fps} frames")
-        waitKeyP = 0
-        frame_Index -= fps
-        if frame_Index < start_frame:
-            print("Cannot go further back, press space to continue")
-            frame_Index = start_frame
-    elif key1 == 83 or key1 == 3 or key1 == ord('g'):  #Right Arrrow Step forwared One Frame
-        #print(f"Forward one frame")
-        waitKeyP = 0 # If we key we want to pause
-        frame_Index += 1 
-        if (frame_Index - start_frame) >= len(track_frames):
-            #print("Reached the end of video")
-            frame_Index -= 1 
-            #continue             
-    elif key1 == 82 or key1 == 0 or key1 == ord('h'):  #Up Arrow Forward one second
-        #print(f"forward one second: {fps} frames")
-        waitKeyP = 0 # If we key we want to pause
-        frame_Index += fps
-        #if i >= len(track_frames):
-        if track_frames[frame_Index - start_frame]['frame'] is None:
-            frame_Index -= fps
-            print("Reached the end of buffered video")
-            #continue                   
-    elif key1 == ord('q'):
+
+    new_index = handle_keyboard(frame_Index, start_frame, FPS)
+
+    if new_index is None:
         print("Quitting.")
-        exit()
+        break
 
-
-    # If we are not paulsed go to the next frame
-    if waitKeyP != 0: frame_Index = frame_Index + 1 
+    frame_Index = new_index
     
-
-    #print(f'Outputting data to CSV {csvOutputFile}')
 
     with open(csv_file, mode='a', newline='') as file:
         writer = csv.writer(file)
@@ -403,7 +372,7 @@ while frame_Index < end_frame:
         right_distToe
     ])
 
+fullFrameVidOut.close()
+croppedVidOut.close()
 
-fullFrameVidOut.release()
-croppedVidOut.release()
 cv2.destroyAllWindows()

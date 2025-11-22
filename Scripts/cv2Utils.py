@@ -63,7 +63,7 @@ def isPersonInFrame(frame, frameIndex, frameTime_ms, landmarkerVideo): #(frame, 
         return False, None, frame_timestamp_ms
 
 
-def seconds_sinceMidnight(raw_frame, frame_Index):
+def seconds_sinceMidnight(raw_frame, frame_Index, time_tracker):
     #Get seconds from midnight from the frame timestamp
     timestamp = getDateTime(raw_frame) # Get the timestamp from the frame
     HHMMSS, AM_PM = timestamp.split('.') # Split the timestamp into time and AM/PM
@@ -76,7 +76,6 @@ def seconds_sinceMidnight(raw_frame, frame_Index):
         hours = "00"
     total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000 # Convert to total seconds
     return total_seconds # Return the total seconds since midnight
-
 
 def findPixfromDist(distance):
     pixels = 7916.1069/(distance -1.0263) -86.1396
