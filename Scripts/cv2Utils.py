@@ -186,7 +186,7 @@ def crop_to_Northhall():
     center_width = width//2
     min_width = center_width - adjust_width
     max_width = center_width + adjust_width
-    return round(min_width), round(max_width), round(min_height), round(max_height), direction
+    return round(min_width), round(max_width), round(min_height), round(max_height)#, direction
 
 def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_height, min_width, max_width):
     """
@@ -201,8 +201,9 @@ def blur_person_fullFrame(raw_frame, newDim_Frame, landmark, min_height, max_hei
     Returns:
         raw_frame: raw_frame-sized image with the person blurred
     """
-    if result.segmentation_masks is None:
-        return raw_frame
+    #if result.segmentation_masks is None:
+    #    return raw_frame
+
     # Resize the segmentation mask to match the cropped region
     #Saves segmentation mask as numpy array
     crop_mask = landmark.segmentation_masks[0].numpy_view() 

@@ -42,17 +42,20 @@ videoInputFile = f"/video_hallwayTests/{video_name}"
 vibration_data_file = r"/vibration_test_data/Jack_clockTest_interuptVPoll.hdf5"
 
 image_dir = './StudentData/calibration_images'
+
+output_dir = f"{dir}"  # Set your own output path
+fileName = f"{output_dir}/{videoInputFile}"
+
+
+
+
+
 #setcal.find_checkerboard_corners_all_images(image_dir).to_csv(csv_calibration_file, index=False)
 df = pd.read_csv('./StudentData/csv_files/all_checkerboard_points.csv')
 
 H = setcal.compute_homography_from_dataframe( df )
 p = pred.predict_points_on_image( [1000,1000], H )
 
-print('Predicted point at (1000,1000): ', p)
-
-output_dir = f"{dir}"  # Set your own output path
-fileName = f"{output_dir}/{videoInputFile}"
-print(f"Opening video: {fileName}")
 
 
 model_path = f"{modelDir}/pose_landmarker_heavy.task" # 29.2 MiB
@@ -247,7 +250,7 @@ while frame_Index < end_frame:
 
                 frame_height, frame_width = raw_frame.shape[:2]
                 center = int(landmarks[30].x*frame_width), int(landmarks[30].y*frame_height)
-                print('Predicting on:',center)
+                
                 pridictied_location = pred.predict_points_on_image( center, H )
 
                 # === Get new frame dimensions           
