@@ -1,17 +1,34 @@
-EMNIST
-MNIST
-Flowers102
-Jack/trialData
-filtered_points.csv
-StudentData
-*.asf
-*.hdf5
-*.mp4
+
+# Python cache files
+__pycache__/
 *.pyc
-*.csv
+
+# IDE files
+.vscode/
+.idea/
+
+# Virtual environments
+venv/
+
+# The data folders
+StudentData/camera_calibration/*
+StudentData/csv_files/*
+StudentData/vibration_test_data/*
+StudentData/video_hallwayTests/*
+
+
+# Model files
+Models/*
 *.task
 
-__pycache__
+# Data files
+StudentData/**/*.csv
+StudentData/**/*.asf
+StudentData/**/*.hdf5
 
-\venv
+# Keep some data files for calibration and testing
+!all_checkerboard_points.csv
+!poll_run_7-10-2025_10-50-56 AM.asf
+!Jack_clockTest_interuptVPoll.hdf5
+
 
